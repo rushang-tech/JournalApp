@@ -1,0 +1,28 @@
+@page "/"
+
+<div style="padding: 60px 80px !important;">
+    <div class="home-header" style="display: flex; justify-content: center; position: relative; margin-bottom: 50px !important;">
+        <div class="text-center">
+            <h2 class="fw-bold m-0" style="font-size: 1.8rem !important;">Your Journey Today</h2>
+            <p class="text-muted" style="margin-top: 5px !important;">Friday · Day 12 of your journey</p>
+        </div>
+        <i class="bi bi-person-circle" style="position: absolute; right: 0; font-size: 2.2rem !important;"></i>
+    </div>
+
+    <!-- Black Date Strip -->
+    <div style="background: #2D2D2D; border-radius: 28px; padding: 35px !important; display: flex; justify-content: space-between !important;">
+        <div class="date-unit-v"><span>Dec</span><strong>15</strong></div>
+        <div class="date-unit-v"><span>Dec</span><strong>16</strong></div>
+        <div class="date-unit-v"><span>Dec</span><strong>17</strong></div>
+        <div class="date-unit-v active-date"><span>Dec</span><strong>18</strong></div>
+        <div class="date-unit-v"><span>Dec</span><strong>19</strong></div>
+        <div class="date-unit-v"><span>Dec</span><strong>20</strong></div>
+        <div class="date-unit-v"><span>Dec</span><strong>21</strong></div>
+    </div>
+</div>
+
+<style>
+    .date-unit-v { background: white; border-radius: 18px; width: 85px; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .active-date { border: 5px solid black !important; }
+    .date-unit-v strong { font-size: 2rem !important; font-weight: 800 !important; }
+</style>

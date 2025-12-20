@@ -1,0 +1,55 @@
+@page "/analytics"
+
+<div class="analytics-container">
+    <h1 class="analytics-title">Analytics</h1>
+
+    <!-- Top Stats Row -->
+    <div class="stats-grid-row">
+        <div class="stat-widget-card">
+            <p>Daily Streak</p>
+            <h1>12</h1>
+            <span class="text-muted small fw-bold">Current Days</span>
+        </div>
+        <div class="stat-widget-card">
+            <p>Longest Streak</p>
+            <h1>42</h1>
+            <span class="text-muted small fw-bold">Personal Best</span>
+        </div>
+        <div class="stat-widget-card">
+            <p>Favorite Mood</p>
+            <h1 style="font-size: 4rem !important;">😊</h1>
+            <span class="text-muted small fw-bold">85% of entries</span>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-grid-row">
+        <!-- Mood Distribution -->
+        <div class="analytics-chart-box">
+            <h5 class="chart-title">Mood Distribution</h5>
+            <div class="mood-distribution-chart">
+                <div class="chart-bar bar-pos"><span class="bar-label">Positive</span></div>
+                <div class="chart-bar bar-neu"><span class="bar-label">Neutral</span></div>
+                <div class="chart-bar bar-neg"><span class="bar-label">Negative</span></div>
+            </div>
+        </div>
+
+        <!-- Tag Cloud / Word Trends -->
+        <div class="analytics-chart-box">
+            <h5 class="chart-title">Most Frequent Tags</h5>
+            <div class="tag-analytics-area">
+                <div class="pill-tag-analytics">#Personal</div>
+                <div class="pill-tag-analytics">#Work</div>
+                <div class="pill-tag-analytics">#Ideas</div>
+                <div class="pill-tag-analytics">#Coding</div>
+                <div class="pill-tag-analytics">#Health</div>
+                <div class="pill-tag-analytics">#Travel</div>
+            </div>
+            <div style="margin-top: auto;">
+                <p class="text-muted small fw-bold">Average Word Count</p>
+                <h2 class="fw-bold" style="font-size: 2.5rem; letter-spacing: -1px;">342</h2>
+                <span class="text-muted small">Words per entry</span>
+            </div>
+        </div>
+    </div>
+</div>

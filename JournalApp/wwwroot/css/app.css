@@ -1,0 +1,388 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+/* --- 1. GLOBAL RESET --- */
+* {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    font-family: 'Poppins', sans-serif !important;
+    outline: none !important;
+}
+
+body, html {
+    background-color: #E9E9E9 !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    overflow: hidden !important;
+}
+
+/* --- 2. THE SKELETON --- */
+.main-wrapper {
+    display: flex !important;
+    flex-direction: row !important;
+    height: 100vh;
+    width: 100vw;
+}
+
+.sidebar-area {
+    width: 260px;
+    background-color: #D9D9D9;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.content-area {
+    flex: 1 !important;
+    height: 100vh;
+    padding: 60px 80px !important; /* Default padding for Home/Timeline */
+    overflow-y: auto;
+}
+
+/* --- 3. NAVBAR (EXACT FIGMA SPECS) --- */
+.brand-h1 {
+    font-weight: 900;
+    font-size: 2.8rem;
+    padding: 60px 30px 40px 30px !important;
+    letter-spacing: -1.8px;
+}
+
+.nav-links-stack {
+    display: flex;
+    flex-direction: column;
+    padding: 0 15px !important;
+    gap: 8px !important;
+}
+
+.nav-link-custom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px !important;
+    color: #000;
+    text-decoration: none;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.nav-link-custom i { font-size: 1.2rem !important; } /* Sharper Sidebar Icons */
+.nav-link-custom.active { background-color: #CECECE !important; }
+
+/* Pencil Button - Absolute Bottom Right of Gray Sidebar */
+.sidebar-bottom-action {
+    position: absolute;
+    bottom: 35px;
+    right: 25px;
+}
+
+.circle-pencil-btn {
+    background: black;
+    color: white;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* --- 4. JOURNAL PAGE (THE 10/10 FIX) --- */
+.journal-screen-dock {
+    display: flex !important;
+    flex-direction: row !important;
+    height: 100vh;
+    width: 100%;
+    /* This negates the parent padding to make the panes touch the edges */
+    margin: -60px -80px !important;
+}
+
+.journal-middle-list {
+    width: 300px;
+    background-color: #D1D1D1;
+    padding: 60px 30px !important;
+    height: 100vh;
+    border-right: 1px solid #C5C5C5;
+    flex-shrink: 0;
+}
+
+.journal-main-editor {
+    flex: 1;
+    background-color: #E9E9E9;
+    padding: 80px 100px !important;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-title {
+    font-size: 3.2rem;
+    font-weight: 900;
+    margin-bottom: 40px !important;
+    letter-spacing: -1.5px;
+    line-height: 1.1;
+}
+
+.editor-text {
+    font-size: 1.2rem;
+    line-height: 1.7;
+    color: #222;
+}
+
+/* Bottom Toolbar Pills */
+.editor-footer {
+    margin-top: auto !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px !important;
+}
+
+.pill-container {
+    background: #D9D9D9;
+    padding: 12px 30px !important;
+    border-radius: 50px;
+    display: flex;
+    gap: 30px !important;
+}
+
+.pill-item { font-weight: 800; color: #888; font-size: 1rem; cursor: pointer; }
+.pill-item.active { color: #000; }
+.search-pill-mock { background: #D9D9D9; width: 220px; height: 50px; border-radius: 50px; }
+
+/* --- TIMELINE PAGE 10/10 DESIGN --- */
+
+/* The outer container for the whole page */
+.timeline-page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding-top: 20px;
+}
+
+/* Page Title */
+.timeline-page-title {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: -2px;
+    margin-bottom: 40px !important;
+}
+
+/* Search Bar - Pill Style */
+.timeline-search-wrapper {
+    margin-bottom: 50px !important;
+    width: 100%;
+}
+
+.timeline-search-input {
+    width: 100%;
+    background: white;
+    border: none;
+    padding: 16px 30px !important;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+
+/* The List of Cards */
+.timeline-list-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 25px !important;
+}
+
+/* The Individual Card */
+.timeline-entry-card {
+    background: white;
+    border-radius: 25px;
+    padding: 30px !important;
+    display: flex !important;
+    flex-direction: row !important; /* Forces Date, Text, and Mood to be side-by-side */
+    align-items: center;
+    gap: 30px !important;
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+
+.timeline-entry-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.05);
+}
+
+/* Left side of card: Date */
+.timeline-card-date {
+    width: 110px;
+    flex-shrink: 0;
+    text-align: center;
+    border-right: 2px solid #F0F0F0;
+    padding-right: 20px !important;
+}
+
+.timeline-card-date strong {
+    font-size: 1.6rem;
+    font-weight: 800;
+    display: block;
+    line-height: 1;
+}
+
+.timeline-card-date span {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+}
+
+/* Middle of card: Title and Preview */
+.timeline-card-content {
+    flex: 1;
+}
+
+.timeline-card-content h5 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 5px !important;
+}
+
+.timeline-card-content p {
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.5;
+}
+
+/* Right side of card: Mood Emoji */
+.timeline-card-mood {
+    font-size: 2.5rem;
+    padding-left: 10px !important;
+}
+
+/* Load More Button at bottom */
+.timeline-load-more {
+    background: #D9D9D9;
+    padding: 15px 45px !important;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    display: inline-block;
+    cursor: pointer;
+    margin-top: 40px !important;
+    border: none;
+}
+/* --- ANALYTICS PAGE 10/10 DESIGN --- */
+
+.analytics-container {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.analytics-title {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: -2px;
+    margin-bottom: 40px !important;
+}
+
+/* 3-Column Grid for Stats */
+.stats-grid-row {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 30px !important;
+    margin-bottom: 40px !important;
+}
+
+.stat-widget-card {
+    flex: 1;
+    background: white;
+    border-radius: 28px;
+    padding: 35px !important;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.stat-widget-card p {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 10px !important;
+}
+
+.stat-widget-card h1 {
+    font-size: 3.5rem;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 5px !important;
+}
+
+/* Charts Section */
+.charts-grid-row {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 30px !important;
+}
+
+.analytics-chart-box {
+    flex: 1;
+    background: white;
+    border-radius: 32px;
+    padding: 40px !important;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 30px !important;
+}
+
+/* Mock CSS Mood Chart */
+.mood-distribution-chart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    height: 180px;
+    margin-top: auto;
+    gap: 20px;
+}
+
+.chart-bar {
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+}
+
+.bar-pos { background: #2D2D2D; height: 85%; } /* Positive */
+.bar-neu { background: #888; height: 50%; }    /* Neutral */
+.bar-neg { background: #D1D1D1; height: 25%; } /* Negative */
+
+.bar-label {
+    position: absolute;
+    bottom: -30px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #555;
+}
+
+/* Tag Cloud Area */
+.tag-analytics-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.pill-tag-analytics {
+    background: #D9D9D9;
+    padding: 10px 22px !important;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 0.85rem;
+}
