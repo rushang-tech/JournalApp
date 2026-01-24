@@ -1,24 +1,191 @@
-﻿<div class="sidebar-area">
+﻿@using JournalApp.Services
+@inject ThemeService Theme
+@inject NavigationManager Nav
+
+<div class="sidebar-area">
     <div class="brand-h1">Journify</div>
 
     <nav class="nav-links-stack">
+        <!-- NAVIGATION LINKS -->
         <NavLink class="nav-link-custom" href="" Match="NavLinkMatch.All">
             <span>Home</span> <i class="bi bi-house-door-fill"></i>
         </NavLink>
+        
         <NavLink class="nav-link-custom" href="journal">
             <span>Journal</span> <i class="bi bi-journal-text"></i>
         </NavLink>
+        
         <NavLink class="nav-link-custom" href="timeline">
             <span>Timeline</span> <i class="bi bi-clock-history"></i>
         </NavLink>
+
+        <NavLink class="nav-link-custom" href="calendar">
+            <span>Calendar</span> <i class="bi bi-calendar-event-fill"></i>
+        </NavLink>
+        
         <NavLink class="nav-link-custom" href="analytics">
             <span>Analytics</span> <i class="bi bi-bar-chart-fill"></i>
         </NavLink>
+
+        <NavLink class="nav-link-custom" href="export">
+            <span>Export</span> <i class="bi bi-file-earmark-pdf-fill"></i>
+        </NavLink>
+
+        <!-- ITEM 9: THEME TOGGLE (iOS SLIDER EFFECT) -->
+        <div class="nav-link-custom theme-switch-row">
+            <span>Dark Mode</span>
+            <label class="ios-switch">
+                <input type="checkbox" checked="@Theme.IsDarkMode" @onchange="Theme.ToggleTheme">
+                <span class="slider round"></span>
+            </label>
+        </div>
     </nav>
 
+    <!-- LOCK FUNCTION (ICON ONLY) -->
     <div class="sidebar-bottom-action">
-        <button class="circle-pencil-btn">
-            <i class="bi bi-pencil-fill" style="margin: 0 !important; font-size: 1.3rem !important;"></i>
-        </button>
+        <div class="lock-icon-wrapper" @onclick="LockApp" title="Lock Application">
+            <i class="bi bi-lock-fill"></i>
+        </div>
     </div>
 </div>
+
+@code {
+    private void LockApp()
+    {
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+}
+
+<style>
+    .sidebar-area {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 280px;
+        padding: 60px 24px 40px 24px;
+        background-color: var(--card-bg); /* Controlled by ThemeService */
+        border-right: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+
+    .brand-h1 {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 900;
+        font-size: 2.8rem;
+        letter-spacing: -1.8px;
+        margin-bottom: 50px;
+        padding-left: 10px;
+        color: var(--text-main);
+    }
+
+    .nav-links-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex-grow: 1;
+    }
+
+    .nav-link-custom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 20px;
+        color: var(--text-main);
+        text-decoration: none;
+        border-radius: 14px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+
+    .nav-link-custom:hover {
+        background-color: rgba(128, 128, 128, 0.1);
+    }
+
+    .nav-link-custom.active {
+        background-color: #CECECE !important;
+        color: #000 !important;
+    }
+
+    .dark-theme .nav-link-custom.active {
+        background-color: #444 !important;
+        color: #FFF !important;
+    }
+
+    /* iOS SWITCH STYLING */
+    .theme-switch-row {
+        cursor: default;
+        margin-top: 10px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 20px !important;
+        border-radius: 0;
+    }
+
+    .ios-switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+
+    .ios-switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    input:checked + .slider {
+        background-color: #34C759; /* iOS Green */
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+
+    /* LOCK ICON STYLING */
+    .sidebar-bottom-action {
+        display: flex;
+        justify-content: center;
+        padding-top: 20px;
+    }
+
+    .lock-icon-wrapper {
+        width: 45px;
+        height: 45px;
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1.2rem;
+        color: var(--text-main);
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .lock-icon-wrapper:hover {
+        transform: scale(1.1);
+        background-color: var(--text-main);
+        color: var(--card-bg);
+    }
+</style>

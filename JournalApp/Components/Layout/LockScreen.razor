@@ -1,0 +1,178 @@
+@inject IJSRuntime JS
+
+@if (IsLocked)
+{
+    <div class="lock-overlay">
+        
+        <div class="content-centered">
+            <!-- Figma Journify Title -->
+            <h1 class="brand-text">Journify</h1>
+
+            <!-- Figma Welcome Text -->
+            <h2 class="welcome-text">Welcome Back, @SystemName</h2>
+            
+            <!-- Figma Instruction Text -->
+            <p class="instruction-text">Enter PIN to unlock</p>
+
+            <!-- PIN Container (Rectangle 24) -->
+            <div class="pin-wrapper @(isError ? "shake-animation" : "")">
+                
+                <!-- VISUAL BOXES -->
+                <div class="pin-visuals">
+                    <div class="pin-box">
+                        @if (pin.Length > 0) { <div class="dot"></div> }
+                    </div>
+                    <div class="pin-box">
+                        @if (pin.Length > 1) { <div class="dot"></div> }
+                    </div>
+                    <div class="pin-box">
+                        @if (pin.Length > 2) { <div class="dot"></div> }
+                    </div>
+                    <div class="pin-box">
+                        @if (pin.Length > 3) { <div class="dot"></div> }
+                    </div>
+                </div>
+
+                <!-- GHOST INPUT -->
+                <input type="number" 
+                       class="ghost-input" 
+                       value="@pin" 
+                       @oninput="HandleInput" 
+                       maxlength="4" 
+                       autofocus />
+            </div>
+        </div>
+
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private bool IsLocked = true;
+    private string pin = "";
+    private bool isError = false;
+    private string CorrectPin = "1234"; 
+    
+    private string SystemName => Environment.UserName; 
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        pin = e.Value?.ToString() ?? "";
+
+        if (pin.Length == 4)
+        {
+            if (pin == CorrectPin)
+            {
+                await Task.Delay(150);
+                IsLocked = false;
+            }
+            else
+            {
+                isError = true;
+                pin = ""; 
+                await Task.Delay(500);
+                isError = false; 
+            }
+        }
+    }
+}
+
+<style>
+    .lock-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background-color: #ECECEC; /* Figma Rectangle 2 */
+        z-index: 99999;
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .content-centered {
+        display: flex; 
+        flex-direction: column; 
+        align-items: center;
+        text-align: center;
+    }
+
+    /* FIGMA: Journify */
+    .brand-text {
+        font-style: normal;
+        font-weight: 900;
+        font-size: 64px;
+        line-height: 96px;
+        text-align: center;
+        letter-spacing: -0.05em;
+        color: #000000;
+        margin-bottom: 5px; /* Spacing to reach the 356px top of welcome text */
+    }
+
+    /* FIGMA: Welcome Back, (Placeholder) */
+    .welcome-text {
+        font-style: normal;
+        font-weight: 700;
+        font-size: 30px;
+        line-height: 45px;
+        color: #000000;
+        margin: 0;
+    }
+
+    /* FIGMA: Enter PIN to unlock */
+    .instruction-text {
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 30px;
+        color: #979797;
+        margin-top: 15px;
+        margin-bottom: 25px;
+    }
+
+    /* FIGMA: Rectangle 24 */
+    .pin-wrapper {
+        position: relative;
+        width: 352px;
+        height: 84px;
+    }
+
+    .pin-visuals {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        height: 100%;
+    }
+
+    .pin-box {
+        width: 75px; 
+        height: 84px;
+        background: #D9D9D9;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    .dot {
+        width: 30px;
+        height: 30px;
+        background-color: #000000;
+        border-radius: 50%;
+    }
+
+    .ghost-input {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        opacity: 0; cursor: pointer;
+    }
+
+    .shake-animation {
+        animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @@keyframes shake {
+        10%, 90% { transform: translate3d(-2px, 0, 0); }
+        20%, 80% { transform: translate3d(4px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+        40%, 60% { transform: translate3d(8px, 0, 0); }
+    }
+</style>

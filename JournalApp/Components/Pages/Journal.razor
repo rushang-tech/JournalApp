@@ -1,46 +1,187 @@
 @page "/journal"
+@using JournalApp.Models
+@using JournalApp.Services
+@inject JournalService DbService
+@inject IJSRuntime JS
 
-<div class="journal-screen-dock">
-    <!-- Middle Pane: The List -->
-    <div class="journal-middle-list">
-        <p class="fw-bold mb-4" style="font-size: 1rem;">Today</p>
-        
-        <div class="list-card active" style="background:#BDBDBD; padding: 20px !important; border-radius: 12px; margin-bottom: 12px !important;">
-            <h6 class="fw-bold m-0" style="font-size: 0.95rem;">First Dummy Journal of 2025 h...</h6>
-            <span style="font-size: 0.75rem; color: #555;">2025/12/20</span>
+<div class="d-flex flex-column h-100 position-relative p-4">
+    
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div class="text-secondary small fw-bold text-uppercase letter-spacing-1">
+            @currentEntry.EntryDate.ToString("MMMM dd • dddd").ToUpper()
         </div>
+        
+        <div class="d-flex gap-2 align-items-center">
+            <!-- Mood Selection Logic (Primary & Secondary) -->
+            <div class="d-flex gap-1 me-3 align-items-center">
+                <span class="small text-muted me-2">Moods:</span>
+                @foreach(var mood in moods)
+                {
+                    bool isPrimary = currentEntry.PrimaryMood == mood;
+                    bool isSecondary = currentEntry.SecondaryMoods?.Split(',').Contains(mood) ?? false;
+                    
+                    <button class="btn btn-sm rounded-circle border d-flex align-items-center justify-content-center" 
+                            style="@(isPrimary ? "background:#1A1A1A; color:white; border-color:#1A1A1A;" : isSecondary ? "background:#6c757d; color:white; border-color:#6c757d;" : "background:white; border-color:#E5E5E5;") width:35px; height:35px; transition:all 0.2s;"
+                            @onclick="() => ToggleMood(mood)">
+                        @(mood == "Happy" ? "😊" : mood == "Neutral" ? "😐" : "😔")
+                    </button>
+                }
+            </div>
 
-        <div class="list-card" style="padding: 20px !important;">
-            <h6 class="fw-bold m-0" style="font-size: 0.95rem;">Start Writing</h6>
-            <span style="font-size: 0.75rem; color: #555;">2025/12/20</span>
+            <!-- Save Button -->
+            <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveEntry">
+                <i class="bi bi-check2 me-2"></i> Save
+            </button>
         </div>
     </div>
 
-    <!-- Right Pane: The Editor -->
-    <div class="journal-main-editor">
-        <!-- Top Toolbar Icons -->
-        <div class="d-flex justify-content-end gap-4 fw-bold fs-4" style="margin-bottom: 50px !important;">
-            <span>B</span> 
-            <span style="text-decoration: underline;">U</span> 
-            <i class="bi bi-three-dots"></i>
-        </div>
-
-        <h1 class="editor-title">First Dummy Journal of 2025 hehahaha</h1>
+    <!-- EDITOR CANVAS -->
+    <div class="flex-grow-1 mx-auto w-100" style="max-width: 700px;">
         
-        <div class="editor-text">
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-            <p style="margin-top: 20px !important;">Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-        </div>
-
-        <!-- Bottom Format Bar -->
-        <div class="editor-footer">
-            <div class="pill-container">
-                <span class="pill-item active">Title</span>
-                <span class="pill-item">heading</span>
-                <span class="pill-item">Subheading</span>
-                <span class="pill-item">Body</span>
+        @if (!isPreview)
+        {
+            <!-- Edit Mode: Figma Transparent Inputs -->
+            <input type="text" 
+                   class="w-100 border-0 bg-transparent fw-bold display-6 mb-4 zen-input" 
+                   placeholder="Title your day..." 
+                   @bind="currentEntry.Title" />
+            
+            <textarea class="w-100 border-0 bg-transparent fs-5 lh-lg zen-input" 
+                      style="height: 60vh; resize: none;" 
+                      placeholder="Start writing..." 
+                      @bind="currentEntry.Content"></textarea>
+                      
+            <input type="text" 
+                   class="w-100 border-0 bg-transparent text-secondary mt-3 zen-input" 
+                   style="font-size: 0.9rem;"
+                   placeholder="#AddTags..." 
+                   @bind="currentEntry.Tags" />
+        }
+        else
+        {
+            <!-- Preview Mode: Marking Scheme Item 2 -->
+            <div class="p-4 bg-light rounded shadow-sm overflow-auto" style="height: 75vh; border-radius: 16px;">
+                <h1 class="fw-bold">@currentEntry.Title</h1>
+                <hr />
+                <div class="mt-3" style="white-space: pre-wrap; line-height: 1.8;">@((MarkupString)(currentEntry.Content?.Replace("\n", "<br/>") ?? ""))</div>
+                <div class="mt-4">
+                    @if(!string.IsNullOrEmpty(currentEntry.Tags))
+                    {
+                        @foreach(var tag in currentEntry.Tags.Split(','))
+                        {
+                            <span class="badge bg-secondary me-1">#@tag.Trim()</span>
+                        }
+                    }
+                </div>
             </div>
-            <div class="search-pill-mock"></div>
+        }
+    </div>
+
+    <!-- FLOATING TOOLBAR -->
+    <div class="position-absolute bottom-0 start-50 translate-middle-x pb-4">
+        <div class="d-flex align-items-center gap-4 px-4 py-2 rounded-pill shadow-sm bg-white border">
+            <i class="bi bi-type-bold text-dark cursor-pointer" @onclick='() => AddFormatting("**")'></i>
+            <i class="bi bi-type-italic text-secondary cursor-pointer" @onclick='() => AddFormatting("_")'></i>
+            <i class="bi bi-list-ul text-secondary cursor-pointer" @onclick='() => AddFormatting("- ")'></i>
+            <div class="vr"></div>
+            <button class="btn btn-link btn-sm text-decoration-none text-dark p-0 fw-bold" @onclick="() => isPreview = !isPreview">
+                @(isPreview ? "BACK TO EDIT" : "PREVIEW")
+            </button>
         </div>
     </div>
 </div>
+
+<style>
+    /* Figma-style Transparency */
+    .zen-input { 
+        outline: none !important; 
+        box-shadow: none !important;
+        background-color: transparent !important;
+    }
+    .zen-input::placeholder { color: #ccc; }
+    .cursor-pointer { cursor: pointer; }
+    .letter-spacing-1 { letter-spacing: 1px; }
+</style>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Date { get; set; }
+
+    private JournalEntry currentEntry = new JournalEntry { EntryDate = DateTime.Now };
+    private string[] moods = { "Happy", "Neutral", "Sad" };
+    private bool isPreview = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        DateTime targetDate = DateTime.Now;
+
+        if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out DateTime parsedDate))
+        {
+            targetDate = parsedDate;
+        }
+
+        currentEntry.EntryDate = targetDate;
+
+        var existing = await DbService.GetEntryByDateAsync(targetDate);
+        if (existing != null) 
+        {
+            currentEntry = existing;
+        }
+        else 
+        {
+            currentEntry = new JournalEntry { EntryDate = targetDate };
+        }
+    }
+
+    private void ToggleMood(string mood)
+    {
+        // 1. If no primary mood, set it
+        if (string.IsNullOrEmpty(currentEntry.PrimaryMood))
+        {
+            currentEntry.PrimaryMood = mood;
+        }
+        // 2. If clicking the primary again, remove it
+        else if (currentEntry.PrimaryMood == mood)
+        {
+            currentEntry.PrimaryMood = string.Empty;
+        }
+        // 3. Otherwise, manage as Secondary (Max 2)
+        else
+        {
+            var secondaryList = string.IsNullOrEmpty(currentEntry.SecondaryMoods) 
+                ? new List<string>() 
+                : currentEntry.SecondaryMoods.Split(',').ToList();
+
+            if (secondaryList.Contains(mood))
+            {
+                secondaryList.Remove(mood);
+            }
+            else if (secondaryList.Count < 2)
+            {
+                secondaryList.Add(mood);
+            }
+            
+            currentEntry.SecondaryMoods = string.Join(",", secondaryList);
+        }
+    }
+
+    private void AddFormatting(string syntax)
+    {
+        // Simple Markdown append logic
+        currentEntry.Content += $" {syntax}text{syntax} ";
+    }
+
+    private async Task SaveEntry()
+    {
+        try 
+        {
+            await DbService.SaveEntryAsync(currentEntry);
+            await JS.InvokeVoidAsync("alert", "Journal saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Error saving: " + ex.Message);
+        }
+    }
+}

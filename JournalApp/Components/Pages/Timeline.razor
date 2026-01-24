@@ -1,30 +1,104 @@
 @page "/timeline"
+@using JournalApp.Models
+@using JournalApp.Services
+@inject JournalService DbService
 
-<div class="timeline-page-container">
-    <h1 class="timeline-page-title">Timeline</h1>
-
-    <div class="timeline-search-wrapper">
-        <input type="text" class="timeline-search-input" placeholder="Search entries, tags..." />
-    </div>
-
-    <div class="timeline-list-stack">
-        <!-- Card Example -->
-        <div class="timeline-entry-card">
-            <div class="timeline-card-date">
-                <strong>Dec 20</strong>
-                <span>Saturday</span>
-            </div>
-            <div class="timeline-card-content">
-                <h5>First Dummy Journal of 2025</h5>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
-            </div>
-            <div class="timeline-card-mood">😊</div>
+<div style="max-width: 700px; margin: 0 auto; padding-top: 20px;">
+    
+    <!-- HEADER -->
+    <div class="mb-5">
+        <h2 class="fw-bold mb-4">Timeline</h2>
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 rounded-start-pill ps-3">
+                <i class="bi bi-search text-secondary"></i>
+            </span>
+            <input type="text" class="form-control border-start-0 py-2 rounded-end-pill shadow-none" 
+                   placeholder="Search memories..." 
+                   @bind="searchText" 
+                   @bind:after="FilterEntries" />
         </div>
-        
-        <!-- Add more cards here... -->
     </div>
 
-    <div class="text-center">
-        <button class="timeline-load-more">Load More</button>
+    <!-- ENTRY LIST -->
+    <div class="d-flex flex-column gap-3">
+        @if (filteredEntries == null)
+        {
+            <p class="text-muted text-center">Loading...</p>
+        }
+        else if (filteredEntries.Count == 0)
+        {
+             <p class="text-muted text-center">No entries yet.</p>
+        }
+        else
+        {
+            @foreach (var entry in filteredEntries)
+            {
+                <!-- THE STOIC CARD -->
+                <div class="card border-0 shadow-sm p-3 d-flex flex-row gap-3 align-items-start" style="border-radius: 16px; background: white;">
+                    
+                    <!-- Date Box -->
+                    <div class="text-center pt-1" style="min-width: 50px;">
+                        <div class="fw-bold fs-5">@entry.EntryDate.Day</div>
+                        <div class="text-secondary small fw-bold">@entry.EntryDate.ToString("MMM").ToUpper()</div>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between mb-1">
+                            <h5 class="fw-bold mb-1 text-dark">
+                                @(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)
+                            </h5>
+                            @if (!string.IsNullOrEmpty(entry.PrimaryMood))
+                            {
+                                <span class="badge rounded-pill bg-light text-dark border">
+                                    @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐") @entry.PrimaryMood
+                                </span>
+                            }
+                        </div>
+                        <p class="text-secondary mb-0 text-truncate" style="max-width: 350px;">
+                            @entry.Content
+                        </p>
+                        @if (!string.IsNullOrEmpty(entry.Tags))
+                        {
+                            <small class="text-muted mt-1 d-block opacity-75">@entry.Tags</small>
+                        }
+                    </div>
+
+                    <!-- Delete Button -->
+                    <button class="btn btn-sm text-danger opacity-25 hover-opacity-100" @onclick="() => DeleteEntry(entry)">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            }
+        }
     </div>
 </div>
+
+@code {
+    private List<JournalEntry> allEntries;
+    private List<JournalEntry> filteredEntries;
+    private string searchText = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        allEntries = await DbService.GetAllEntriesAsync();
+        filteredEntries = allEntries;
+    }
+
+    private void FilterEntries()
+    {
+        if (string.IsNullOrWhiteSpace(searchText)) filteredEntries = allEntries;
+        else filteredEntries = allEntries.Where(e => (e.Title?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) || (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+    }
+
+    private async Task DeleteEntry(JournalEntry entry)
+    {
+        await DbService.DeleteEntryAsync(entry);
+        await LoadData();
+    }
+}

@@ -72,25 +72,6 @@ body, html {
 .nav-link-custom i { font-size: 1.2rem !important; } /* Sharper Sidebar Icons */
 .nav-link-custom.active { background-color: #CECECE !important; }
 
-/* Pencil Button - Absolute Bottom Right of Gray Sidebar */
-.sidebar-bottom-action {
-    position: absolute;
-    bottom: 35px;
-    right: 25px;
-}
-
-.circle-pencil-btn {
-    background: black;
-    color: white;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
 
 /* --- 4. JOURNAL PAGE (THE 10/10 FIX) --- */
 .journal-screen-dock {
@@ -243,7 +224,7 @@ body, html {
 }
 
 .timeline-card-content h5 {
-    font-size: 1.25rem;
+    font-size: 1.25rem;s
     font-weight: 800;
     margin-bottom: 5px !important;
 }

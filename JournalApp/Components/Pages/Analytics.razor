@@ -1,55 +1,155 @@
 @page "/analytics"
+@using JournalApp.Services
+@using JournalApp.Models
+@inject JournalService DbService
 
-<div class="analytics-container">
-    <h1 class="analytics-title">Analytics</h1>
+<div class="container-fluid p-4">
+    <h2 class="fw-bold mb-4">Insights & Analytics</h2>
 
-    <!-- Top Stats Row -->
-    <div class="stats-grid-row">
-        <div class="stat-widget-card">
-            <p>Daily Streak</p>
-            <h1>12</h1>
-            <span class="text-muted small fw-bold">Current Days</span>
+    <!-- SUMMARY CARDS -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
+                <span class="text-muted small fw-bold">CURRENT STREAK</span>
+                <h2 class="display-6 fw-bold mt-2 text-dark">@currentStreak</h2>
+                <p class="small text-secondary mb-0">days in a row</p>
+            </div>
         </div>
-        <div class="stat-widget-card">
-            <p>Longest Streak</p>
-            <h1>42</h1>
-            <span class="text-muted small fw-bold">Personal Best</span>
+        <div class="col-md-3">
+            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
+                <span class="text-muted small fw-bold">LONGEST STREAK</span>
+                <h2 class="display-6 fw-bold mt-2 text-dark">@longestStreak</h2>
+                <p class="small text-secondary mb-0">personal best</p>
+            </div>
         </div>
-        <div class="stat-widget-card">
-            <p>Favorite Mood</p>
-            <h1 style="font-size: 4rem !important;">😊</h1>
-            <span class="text-muted small fw-bold">85% of entries</span>
+        <div class="col-md-3">
+            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
+                <span class="text-muted small fw-bold">MISSED DAYS</span>
+                <h2 class="display-6 fw-bold mt-2 text-danger">@missedDays</h2>
+                <p class="small text-secondary mb-0">last 30 days</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
+                <span class="text-muted small fw-bold">TOTAL WORDS</span>
+                <h2 class="display-6 fw-bold mt-2 text-dark">@totalWords</h2>
+                <p class="small text-secondary mb-0">written in total</p>
+            </div>
         </div>
     </div>
 
-    <!-- Charts Row -->
-    <div class="charts-grid-row">
-        <!-- Mood Distribution -->
-        <div class="analytics-chart-box">
-            <h5 class="chart-title">Mood Distribution</h5>
-            <div class="mood-distribution-chart">
-                <div class="chart-bar bar-pos"><span class="bar-label">Positive</span></div>
-                <div class="chart-bar bar-neu"><span class="bar-label">Neutral</span></div>
-                <div class="chart-bar bar-neg"><span class="bar-label">Negative</span></div>
+    <!-- MOOD DISTRIBUTION BARS -->
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="stoic-card p-4 border rounded shadow-sm bg-white h-100">
+                <h5 class="fw-bold mb-4">Mood Distribution</h5>
+                
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold">Positive 😊</span>
+                        <span class="text-muted">@positivePct%</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar bg-success" style="width: @positivePct%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold">Neutral 😐</span>
+                        <span class="text-muted">@neutralPct%</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar bg-info" style="width: @neutralPct%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-0">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold">Negative 😔</span>
+                        <span class="text-muted">@negativePct%</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar bg-danger" style="width: @negativePct%"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Tag Cloud / Word Trends -->
-        <div class="analytics-chart-box">
-            <h5 class="chart-title">Most Frequent Tags</h5>
-            <div class="tag-analytics-area">
-                <div class="pill-tag-analytics">#Personal</div>
-                <div class="pill-tag-analytics">#Work</div>
-                <div class="pill-tag-analytics">#Ideas</div>
-                <div class="pill-tag-analytics">#Coding</div>
-                <div class="pill-tag-analytics">#Health</div>
-                <div class="pill-tag-analytics">#Travel</div>
-            </div>
-            <div style="margin-top: auto;">
-                <p class="text-muted small fw-bold">Average Word Count</p>
-                <h2 class="fw-bold" style="font-size: 2.5rem; letter-spacing: -1px;">342</h2>
-                <span class="text-muted small">Words per entry</span>
+        <!-- TOP TAGS -->
+        <div class="col-md-4">
+            <div class="stoic-card p-4 border rounded shadow-sm bg-white h-100">
+                <h5 class="fw-bold mb-3">Frequent Tags</h5>
+                <hr />
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    @if (topTags != null && topTags.Any())
+                    {
+                        @foreach (var tag in topTags)
+                        {
+                            <span class="badge bg-light text-dark border p-2">#@tag</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-muted small">No tags used yet.</span>
+                    }
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .progress { background-color: #f0f0f0; border-radius: 10px; }
+    .progress-bar { border-radius: 10px; transition: width 0.6s ease; }
+    .stoic-card { transition: transform 0.2s; }
+</style>
+
+@code {
+    private int currentStreak = 0;
+    private int totalWords = 0;
+    private int longestStreak = 0;
+    private int missedDays = 0;
+
+    private double positivePct = 0;
+    private double neutralPct = 0;
+    private double negativePct = 0;
+    private List<string> topTags = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Get Base Data
+        var entries = await DbService.GetAllEntriesAsync();
+        currentStreak = await DbService.GetCurrentStreakAsync();
+        totalWords = await DbService.GetTotalWordsAsync();
+
+        // 2. Get Stats from your Tuple method
+        var stats = await DbService.GetAdvancedStatsAsync();
+        longestStreak = stats.longest;
+        missedDays = stats.missed;
+
+        // 3. Calculate Mood Distribution
+        if (entries.Any())
+        {
+            int total = entries.Count;
+            int pos = entries.Count(e => e.PrimaryMood == "Happy");
+            int neu = entries.Count(e => e.PrimaryMood == "Neutral");
+            int neg = entries.Count(e => e.PrimaryMood == "Sad");
+
+            positivePct = Math.Round((double)pos / total * 100);
+            neutralPct = Math.Round((double)neu / total * 100);
+            negativePct = Math.Round((double)neg / total * 100);
+
+            // 4. Calculate Top Tags
+            topTags = entries
+                .Where(e => !string.IsNullOrEmpty(e.Tags))
+                .SelectMany(e => e.Tags!.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(t => t.Trim().Replace("#", ""))
+                .GroupBy(t => t)
+                .OrderByDescending(g => g.Count())
+                .Take(5)
+                .Select(g => g.Key)
+                .ToList();
+        }
+    }
+}

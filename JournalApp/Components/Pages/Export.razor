@@ -1,0 +1,63 @@
+@page "/export"
+@using JournalApp.Services
+@using Microsoft.Maui.ApplicationModel
+@using Microsoft.Maui.Storage
+@inject JournalService DbService
+@inject IJSRuntime JS
+
+<div class="container-fluid p-4">
+    <h2 class="fw-bold mb-4">Export Journals</h2>
+    
+    <div class="stoic-card p-4 border rounded shadow-sm bg-white" style="max-width: 600px;">
+        <p class="text-muted mb-4">Select date range to export PDF to Downloads.</p>
+        
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">START DATE</label>
+                <input type="date" class="form-control" @bind="startDate" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">END DATE</label>
+                <input type="date" class="form-control" @bind="endDate" />
+            </div>
+        </div>
+
+        <button class="btn btn-dark w-100 mt-4 py-3 fw-bold rounded-pill" @onclick="GenerateExport">
+            @if (isGenerating) { <span>Processing...</span> }
+            else { <span><i class="bi bi-file-earmark-pdf me-2"></i> EXPORT PDF</span> }
+        </button>
+    </div>
+</div>
+
+@code {
+    private DateTime startDate = DateTime.Today.AddDays(-30);
+    private DateTime endDate = DateTime.Today;
+    private bool isGenerating = false;
+
+    private async Task GenerateExport()
+    {
+        isGenerating = true;
+        await Task.Delay(50); // UI Refresh
+
+        try 
+        {
+            string filePath = await DbService.GeneratePdfExportAsync(startDate, endDate);
+            
+            if (string.IsNullOrEmpty(filePath))
+            {
+                await JS.InvokeVoidAsync("alert", "No entries found.");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "PDF Saved to Downloads!");
+                // Try to open it
+                await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + ex.Message);
+        }
+        finally { isGenerating = false; }
+    }
+}

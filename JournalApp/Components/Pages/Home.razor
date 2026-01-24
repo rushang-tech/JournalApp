@@ -1,28 +1,134 @@
 @page "/"
+@using JournalApp.Services
+@using JournalApp.Models
+@inject JournalService DbService
+@inject NavigationManager Nav
 
-<div style="padding: 60px 80px !important;">
-    <div class="home-header" style="display: flex; justify-content: center; position: relative; margin-bottom: 50px !important;">
-        <div class="text-center">
-            <h2 class="fw-bold m-0" style="font-size: 1.8rem !important;">Your Journey Today</h2>
-            <p class="text-muted" style="margin-top: 5px !important;">Friday · Day 12 of your journey</p>
+<div class="dashboard-wrapper">
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <div class="date" style="color: var(--text-muted);">@DateTime.Now.ToString("dddd, MMM dd").ToUpper()</div>
+            <h1 class="title">Good Evening, Rushang</h1>
         </div>
-        <i class="bi bi-person-circle" style="position: absolute; right: 0; font-size: 2.2rem !important;"></i>
+        <div class="streak">
+            🔥 @currentStreak DAY STREAK
+        </div>
     </div>
 
-    <!-- Black Date Strip -->
-    <div style="background: #2D2D2D; border-radius: 28px; padding: 35px !important; display: flex; justify-content: space-between !important;">
-        <div class="date-unit-v"><span>Dec</span><strong>15</strong></div>
-        <div class="date-unit-v"><span>Dec</span><strong>16</strong></div>
-        <div class="date-unit-v"><span>Dec</span><strong>17</strong></div>
-        <div class="date-unit-v active-date"><span>Dec</span><strong>18</strong></div>
-        <div class="date-unit-v"><span>Dec</span><strong>19</strong></div>
-        <div class="date-unit-v"><span>Dec</span><strong>20</strong></div>
-        <div class="date-unit-v"><span>Dec</span><strong>21</strong></div>
+    <!-- Black Hero Card -->
+    <div class="hero-card" @onclick='() => Nav.NavigateTo("journal")'>
+        <div class="hero-text">
+            <h2>@dailyPrompt</h2>
+            <p>Start writing...</p>
+        </div>
+        <div class="hero-icon">
+            <i class="bi bi-pencil-square"></i>
+        </div>
+    </div>
+
+    <!-- Bottom Stats (Pills) -->
+    <div class="stats-row">
+        <div class="stat-pill">
+            <h1>@totalWords</h1>
+            <span style="color: var(--text-muted);">WORDS WRITTEN</span>
+        </div>
+        <div class="stat-pill">
+            <h1>@entryCount</h1>
+            <span style="color: var(--text-muted);">TOTAL ENTRIES</span>
+        </div>
+    </div>
+
+    <!-- Recent List -->
+    <div class="mt-5">
+        <h4 class="mb-3 fw-bold">Recent Activity</h4>
+        @if(recentEntries.Any())
+        {
+            @foreach(var entry in recentEntries.Take(3))
+            {
+                <div class="activity-row mb-2">
+                    <div class="fw-bold me-3 text-center" style="width: 40px">
+                        @entry.EntryDate.Day <br> <small style="color: var(--text-muted);">@entry.EntryDate.ToString("MMM")</small>
+                    </div>
+                    <div>
+                        <div class="fw-bold">@(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)</div>
+                        <div class="small" style="color: var(--text-muted);">@entry.Content</div>
+                    </div>
+                    <div class="ms-auto fs-4">
+                        @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐")
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p style="color: var(--text-muted);">No entries yet. Start your journey today.</p>
+        }
     </div>
 </div>
+<div class="alert alert-info mt-4" role="alert">
+    <strong>Database Location:</strong> <br/>
+    <small>@dbPath</small>
+</div>
+
+@code {
+    private int currentStreak = 0;
+    private int totalWords = 0;
+    private int entryCount = 0;
+    // Fixes CS8618 Warning: Initialize the list
+    private List<JournalEntry> recentEntries = new List<JournalEntry>();
+    private string dailyPrompt = "How do you do? Today tomoro ahah welcome back";
+    private string dbPath = System.IO.Path.Combine(FileSystem.AppDataDirectory, "MyJournal.db");
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Load Stats
+        currentStreak = await DbService.GetCurrentStreakAsync();
+        totalWords = await DbService.GetTotalWordsAsync();
+        var all = await DbService.GetAllEntriesAsync();
+        entryCount = all.Count;
+        recentEntries = all;
+
+        // 2. CHECK IF USER WROTE TODAY
+        // We ask the DB: "Do we have a row for today's date?"
+        var todayEntry = await DbService.GetEntryByDateAsync(DateTime.Now);
+
+        if (todayEntry != null)
+        {
+            // Case: They already wrote something today
+            dailyPrompt = "Great start! Want to add more details?";
+        }
+        else
+        {
+            // Case: No entry found for today
+            dailyPrompt = "Your day is a blank canvas. Start writing...";
+        }
+    }
+}
 
 <style>
-    .date-unit-v { background: white; border-radius: 18px; width: 85px; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .active-date { border: 5px solid black !important; }
-    .date-unit-v strong { font-size: 2rem !important; font-weight: 800 !important; }
+    .dashboard-wrapper { padding: 40px; max-width: 1200px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
+    .title { font-weight: 900; font-size: 3.5rem; margin: 0; line-height: 1; }
+    .streak { font-weight: 800; font-size: 1.1rem; }
+
+    .hero-card {
+        background: #000; color: white; border-radius: 30px; padding: 40px;
+        display: flex; justify-content: space-between; align-items: center;
+        min-height: 200px; cursor: pointer; margin-bottom: 30px;
+    }
+    .hero-icon { background: white; color: black; width: 60px; height: 60px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+
+    .stats-row { display: flex; gap: 20px; }
+    .stat-pill {
+        flex: 1; padding: 20px 30px; border-radius: 100px;
+        display: flex; align-items: center; gap: 20px;
+        border: 1px solid var(--border-color);
+    }
+    .stat-pill h1 { font-weight: 900; font-size: 2.5rem; margin: 0; }
+
+    .activity-row {
+        padding: 15px 25px; border-radius: 50px;
+        display: flex; align-items: center; border: 1px solid var(--border-color);
+    }
 </style>
