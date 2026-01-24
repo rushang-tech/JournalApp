@@ -9,7 +9,7 @@
     <h2 class="fw-bold mb-4">Export Journals</h2>
     
     <div class="stoic-card p-4 border rounded shadow-sm bg-white" style="max-width: 600px;">
-        <p class="text-muted mb-4">Select date range to export PDF to Downloads.</p>
+        <p class="text-muted mb-4">Select date range to export PDF.</p>
         
         <div class="row g-3">
             <div class="col-md-6">
@@ -37,7 +37,8 @@
     private async Task GenerateExport()
     {
         isGenerating = true;
-        await Task.Delay(50); // UI Refresh
+        // Small delay to let UI show "Processing..."
+        await Task.Delay(50); 
 
         try 
         {
@@ -45,13 +46,19 @@
             
             if (string.IsNullOrEmpty(filePath))
             {
-                await JS.InvokeVoidAsync("alert", "No entries found.");
+                await JS.InvokeVoidAsync("alert", "No entries found in this date range.");
             }
             else
             {
-                await JS.InvokeVoidAsync("alert", "PDF Saved to Downloads!");
-                // Try to open it
-                await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
+                // NOTIFICATION: Tell the user to look for the share/save dialog
+                await JS.InvokeVoidAsync("alert", "PDF Generated Successfully!\n\nA sharing menu will open. Please select 'Save to Files' or 'Save As' to pick where you want to store the PDF.");
+
+                // Trigger native Share/Save dialog
+                await Share.Default.RequestAsync(new ShareFileRequest
+                {
+                    Title = "Journify PDF Export",
+                    File = new ShareFile(filePath)
+                });
             }
         }
         catch (Exception ex)

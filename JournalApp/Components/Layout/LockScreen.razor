@@ -34,13 +34,19 @@
                 </div>
 
                 <!-- GHOST INPUT -->
-                <input type="number" 
+                <input type="text" 
+                       inputmode="numeric"
                        class="ghost-input" 
                        value="@pin" 
                        @oninput="HandleInput" 
                        maxlength="4" 
                        autofocus />
             </div>
+
+            <!-- Error Message (Only shows if errorMessage is set) -->
+            <p class="error-text" style="visibility: @(string.IsNullOrEmpty(errorMessage) ? "hidden" : "visible")">
+                @errorMessage
+            </p>
         </div>
 
     </div>
@@ -55,14 +61,40 @@ else
     private bool IsLocked = true;
     private string pin = "";
     private bool isError = false;
+    private string errorMessage = ""; // Holds the red error text
     private string CorrectPin = "1234"; 
     
     private string SystemName => Environment.UserName; 
 
     private async Task HandleInput(ChangeEventArgs e)
     {
-        pin = e.Value?.ToString() ?? "";
+        var rawInput = e.Value?.ToString() ?? "";
 
+        // 1. STRICT CHECK: Does input contain any non-digits?
+        if (rawInput.Any(c => !char.IsDigit(c)))
+        {
+            // Case: User typed a letter
+            pin = ""; // Clear everything immediately
+            errorMessage = "Only numbers allowed"; // Set red text
+            await TriggerShake(); // Shake the box
+            
+            // Clear the error message after a short delay so it doesn't stay forever
+            await Task.Delay(1500); 
+            errorMessage = "";
+            StateHasChanged();
+            return; 
+        }
+
+        // 2. Case: Input is valid numbers
+        errorMessage = ""; // Clear any previous error
+        
+        // Safety Trim
+        if (rawInput.Length > 4) 
+            pin = rawInput.Substring(0, 4);
+        else 
+            pin = rawInput;
+
+        // 3. Check Logic
         if (pin.Length == 4)
         {
             if (pin == CorrectPin)
@@ -72,12 +104,28 @@ else
             }
             else
             {
-                isError = true;
-                pin = ""; 
-                await Task.Delay(500);
-                isError = false; 
+                // Case: Wrong PIN
+                pin = ""; // Clear
+                errorMessage = "Incorrect PIN"; 
+                await TriggerShake();
+                
+                await Task.Delay(1500);
+                errorMessage = "";
+                StateHasChanged();
             }
         }
+    }
+
+    private async Task TriggerShake()
+    {
+        isError = false;
+        StateHasChanged();
+        await Task.Delay(10); // Tiny delay to reset animation
+        isError = true;
+        StateHasChanged();
+        await Task.Delay(400); // Animation duration
+        isError = false;
+        StateHasChanged();
     }
 }
 
@@ -107,7 +155,7 @@ else
         text-align: center;
         letter-spacing: -0.05em;
         color: #000000;
-        margin-bottom: 5px; /* Spacing to reach the 356px top of welcome text */
+        margin-bottom: 5px; 
     }
 
     /* FIGMA: Welcome Back, (Placeholder) */
@@ -163,10 +211,23 @@ else
     .ghost-input {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         opacity: 0; cursor: pointer;
+        color: transparent; 
+        background: transparent; 
+        border: none;
+        caret-color: transparent; 
     }
 
     .shake-animation {
         animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    /* New Error Text Style */
+    .error-text {
+        color: #dc3545; /* Bootstrap Red */
+        font-weight: 700;
+        font-size: 14px;
+        margin-top: 15px;
+        height: 20px; /* Reserve height so layout doesn't jump */
     }
 
     @@keyframes shake {

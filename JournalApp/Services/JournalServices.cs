@@ -132,15 +132,15 @@ namespace JournalApp.Services
             return (longest + 1, missed);
         }
 
-        // --- iText7 PDF EXPORT (Simpler Styling to Guarantee Build) ---
+        // --- iText7 PDF EXPORT ---
         public async Task<string> GeneratePdfExportAsync(DateTime start, DateTime end)
         {
             var entries = await GetEntriesByRangeAsync(start, end);
             if (!entries.Any()) return string.Empty;
 
-            string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            // FIX: Use FileSystem.CacheDirectory to ensure write access on all platforms (Mac, iOS, Android)
             string fileName = $"Journify_Export_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
-            string filePath = Path.Combine(downloadsPath, fileName);
+            string filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
 
             using (PdfWriter writer = new PdfWriter(filePath))
             using (PdfDocument pdf = new PdfDocument(writer))
@@ -164,11 +164,12 @@ namespace JournalApp.Services
                         .SetFontSize(10)
                         .SetFontColor(ColorConstants.DARK_GRAY));
 
-                    // Title (Bold handled by Paragraph logic if simple)
+                    // Title
                     if (!string.IsNullOrEmpty(entry.Title))
                     {
                         document.Add(new Paragraph(entry.Title)
                             .SetFontSize(16)
+                           // .SetBold()
                             .SetMarginBottom(5));
                     }
 
@@ -182,6 +183,7 @@ namespace JournalApp.Services
                     {
                         document.Add(new Paragraph($"Tags: {entry.Tags}")
                             .SetFontSize(9)
+                            //.SetItalic()
                             .SetFontColor(ColorConstants.GRAY));
                     }
 
