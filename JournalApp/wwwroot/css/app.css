@@ -10,9 +10,9 @@
 }
 
 body, html {
-    background-color: #E9E9E9 !important;
+    background-color: #FFFFFF !important;
     height: 100vh !important;
-    width: 100vw !important;
+    width: 100% !important;
     overflow: hidden !important;
 }
 
@@ -21,33 +21,38 @@ body, html {
     display: flex !important;
     flex-direction: row !important;
     height: 100vh;
-    width: 100vw;
+    width: 100%;
 }
 
 .sidebar-area {
     width: 260px;
-    background-color: #D9D9D9;
+    background-color: #FFFFFF;
     height: 100vh;
     display: flex;
     flex-direction: column;
     padding: 0 !important;
     position: relative;
     flex-shrink: 0;
+    border-right: 1px solid #F0F0F0;
+    z-index: 10;
 }
 
 .content-area {
     flex: 1 !important;
     height: 100vh;
-    padding: 60px 80px !important; /* Default padding for Home/Timeline */
+    padding: 60px 80px !important;
     overflow-y: auto;
+    overflow-x: hidden !important;
+    background-color: #FFFFFF;
 }
 
-/* --- 3. NAVBAR (EXACT FIGMA SPECS) --- */
+/* --- 3. NAVBAR --- */
 .brand-h1 {
     font-weight: 900;
     font-size: 2.8rem;
     padding: 60px 30px 40px 30px !important;
     letter-spacing: -1.8px;
+    color: #000;
 }
 
 .nav-links-stack {
@@ -62,39 +67,66 @@ body, html {
     justify-content: space-between;
     align-items: center;
     padding: 12px 20px !important;
-    color: #000;
+    color: #555;
     text-decoration: none;
     border-radius: 14px;
     font-weight: 600;
     font-size: 0.95rem;
 }
 
-.nav-link-custom i { font-size: 1.2rem !important; } /* Sharper Sidebar Icons */
-.nav-link-custom.active { background-color: #CECECE !important; }
+.nav-link-custom:hover {
+    background-color: #F7F7F7 !important;
+    color: #000;
+}
+
+.nav-link-custom i { font-size: 1.2rem !important; }
+.nav-link-custom.active {
+    background-color: #F0F0F0 !important;
+    color: #000;
+}
 
 
-/* --- 4. JOURNAL PAGE (THE 10/10 FIX) --- */
+/* --- 4. JOURNAL PAGE --- */
 .journal-screen-dock {
     display: flex !important;
     flex-direction: row !important;
     height: 100vh;
     width: 100%;
-    /* This negates the parent padding to make the panes touch the edges */
     margin: -60px -80px !important;
 }
 
+/* SIDEBAR ANIMATION LOGIC */
 .journal-middle-list {
-    width: 300px;
-    background-color: #D1D1D1;
-    padding: 60px 30px !important;
+    background-color: #FFFFFF;
     height: 100vh;
-    border-right: 1px solid #C5C5C5;
+    border-right: 1px solid #F0F0F0;
     flex-shrink: 0;
+
+    /* Animation Properties */
+    width: 300px;
+    padding: 60px 30px !important;
+    opacity: 1;
+    overflow: hidden;
+    transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    padding 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 0.3s ease;
+}
+
+.journal-middle-list.collapsed {
+    width: 0px !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    opacity: 0;
+    border-right: none;
+}
+
+.journal-list-content {
+    min-width: 240px;
 }
 
 .journal-main-editor {
     flex: 1;
-    background-color: #E9E9E9;
+    background-color: #FFFFFF !important;
     padding: 80px 100px !important;
     height: 100vh;
     display: flex;
@@ -107,45 +139,162 @@ body, html {
     margin-bottom: 40px !important;
     letter-spacing: -1.5px;
     line-height: 1.1;
+    color: #000;
 }
 
-.editor-text {
-    font-size: 1.2rem;
-    line-height: 1.7;
+/* Rich Text Editor Styling */
+.rich-text-editor {
+    font-size: 1.35rem;
+    line-height: 1.8;
     color: #222;
+    min-height: 60vh;
+    outline: none !important;
+    border: none !important;
+    cursor: text;
+    white-space: pre-wrap;
 }
 
-/* Bottom Toolbar Pills */
-.editor-footer {
-    margin-top: auto !important;
+.rich-text-editor[contenteditable]:empty::before {
+    content: attr(placeholder);
+    color: #ccc;
+    display: block;
+}
+
+/* ADD ENTRY BUTTON FIX */
+.btn-add-entry {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    line-height: 1 !important;
+}
+
+.btn-add-entry i {
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+
+/* SIDEBAR ENTRY ITEM STYLING */
+.sidebar-entry-item {
+    transition: all 0.2s ease;
+    border: none !important;
+    white-space: nowrap;
+}
+
+.sidebar-entry-item:hover {
+    background-color: #F9F9F9;
+}
+
+.sidebar-entry-item.active {
+    background-color: #EBEBEB !important;
+    color: #000 !important;
+}
+
+.sidebar-entry-item.inactive {
+    background-color: #FFFFFF !important;
+    color: #888 !important;
+}
+
+/* --- SPOTLIGHT SEARCH OVERLAY --- */
+.spotlight-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-color: rgba(0,0,0,0.3);
+    backdrop-filter: blur(5px);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 15vh;
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.spotlight-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.spotlight-container {
+    width: 600px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spotlight-overlay.visible .spotlight-container {
+    transform: scale(1);
+}
+
+.spotlight-bar {
+    display: flex;
+    align-items: center;
+    padding: 20px 25px !important;
+    border-bottom: 1px solid #F0F0F0;
+}
+
+.spotlight-bar i {
+    font-size: 1.5rem;
+    color: #999;
+    margin-right: 15px !important;
+}
+
+.spotlight-input {
+    border: none !important;
+    font-size: 1.5rem;
+    font-weight: 500;
+    width: 100%;
+    color: #333;
+    outline: none !important;
+    background: transparent;
+}
+
+.spotlight-input::placeholder { color: #CCC; }
+
+.spotlight-results {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px !important;
+}
+
+.spotlight-item {
+    padding: 15px 20px !important;
+    cursor: pointer;
+    border-radius: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 20px !important;
+    transition: background-color 0.1s;
 }
 
-.pill-container {
-    background: #D9D9D9;
-    padding: 12px 30px !important;
-    border-radius: 50px;
-    display: flex;
-    gap: 30px !important;
+.spotlight-item:hover, .spotlight-item.selected {
+    background-color: #F5F5F5; /* Spotlight selection color */
 }
 
-.pill-item { font-weight: 800; color: #888; font-size: 1rem; cursor: pointer; }
-.pill-item.active { color: #000; }
-.search-pill-mock { background: #D9D9D9; width: 220px; height: 50px; border-radius: 50px; }
+/* Scrollbar for spotlight */
+.spotlight-results::-webkit-scrollbar { width: 6px; }
+.spotlight-results::-webkit-scrollbar-thumb { background: #DDD; border-radius: 10px; }
 
-/* --- TIMELINE PAGE 10/10 DESIGN --- */
+/* --- TIMELINE PAGE --- */
 
-/* The outer container for the whole page */
 .timeline-page-container {
     max-width: 900px;
     margin: 0 auto;
     padding-top: 20px;
 }
 
-/* Page Title */
 .timeline-page-title {
     font-size: 3rem;
     font-weight: 900;
@@ -153,7 +302,6 @@ body, html {
     margin-bottom: 40px !important;
 }
 
-/* Search Bar - Pill Style */
 .timeline-search-wrapper {
     margin-bottom: 50px !important;
     width: 100%;
@@ -162,7 +310,7 @@ body, html {
 .timeline-search-input {
     width: 100%;
     background: white;
-    border: none;
+    border: 1px solid #EEE;
     padding: 16px 30px !important;
     border-radius: 50px;
     font-size: 1rem;
@@ -170,20 +318,19 @@ body, html {
     box-shadow: 0 4px 20px rgba(0,0,0,0.03);
 }
 
-/* The List of Cards */
 .timeline-list-stack {
     display: flex !important;
     flex-direction: column !important;
     gap: 25px !important;
 }
 
-/* The Individual Card */
 .timeline-entry-card {
     background: white;
+    border: 1px solid #F0F0F0;
     border-radius: 25px;
     padding: 30px !important;
     display: flex !important;
-    flex-direction: row !important; /* Forces Date, Text, and Mood to be side-by-side */
+    flex-direction: row !important;
     align-items: center;
     gap: 30px !important;
     transition: transform 0.2s ease;
@@ -193,9 +340,9 @@ body, html {
 .timeline-entry-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 15px 30px rgba(0,0,0,0.05);
+    border-color: #E0E0E0;
 }
 
-/* Left side of card: Date */
 .timeline-card-date {
     width: 110px;
     flex-shrink: 0;
@@ -218,13 +365,12 @@ body, html {
     text-transform: uppercase;
 }
 
-/* Middle of card: Title and Preview */
 .timeline-card-content {
     flex: 1;
 }
 
 .timeline-card-content h5 {
-    font-size: 1.25rem;s
+    font-size: 1.25rem;
     font-weight: 800;
     margin-bottom: 5px !important;
 }
@@ -235,15 +381,13 @@ body, html {
     line-height: 1.5;
 }
 
-/* Right side of card: Mood Emoji */
 .timeline-card-mood {
     font-size: 2.5rem;
     padding-left: 10px !important;
 }
 
-/* Load More Button at bottom */
 .timeline-load-more {
-    background: #D9D9D9;
+    background: #F0F0F0;
     padding: 15px 45px !important;
     border-radius: 50px;
     font-weight: 800;
@@ -253,7 +397,8 @@ body, html {
     margin-top: 40px !important;
     border: none;
 }
-/* --- ANALYTICS PAGE 10/10 DESIGN --- */
+
+/* --- ANALYTICS PAGE --- */
 
 .analytics-container {
     max-width: 1100px;
@@ -267,7 +412,6 @@ body, html {
     margin-bottom: 40px !important;
 }
 
-/* 3-Column Grid for Stats */
 .stats-grid-row {
     display: flex !important;
     flex-direction: row !important;
@@ -278,6 +422,7 @@ body, html {
 .stat-widget-card {
     flex: 1;
     background: white;
+    border: 1px solid #F0F0F0 !important;
     border-radius: 28px;
     padding: 35px !important;
     text-align: center;
@@ -299,16 +444,17 @@ body, html {
     margin-bottom: 5px !important;
 }
 
-/* Charts Section */
 .charts-grid-row {
     display: flex !important;
     flex-direction: row !important;
     gap: 30px !important;
+    margin-bottom: 40px !important;
 }
 
 .analytics-chart-box {
     flex: 1;
     background: white;
+    border: 1px solid #F0F0F0 !important;
     border-radius: 32px;
     padding: 40px !important;
     min-height: 400px;
@@ -322,7 +468,6 @@ body, html {
     margin-bottom: 30px !important;
 }
 
-/* Mock CSS Mood Chart */
 .mood-distribution-chart {
     display: flex;
     align-items: flex-end;
@@ -338,9 +483,9 @@ body, html {
     position: relative;
 }
 
-.bar-pos { background: #2D2D2D; height: 85%; } /* Positive */
-.bar-neu { background: #888; height: 50%; }    /* Neutral */
-.bar-neg { background: #D1D1D1; height: 25%; } /* Negative */
+.bar-pos { background: #2D2D2D; height: 85%; }
+.bar-neu { background: #888; height: 50%; }
+.bar-neg { background: #D1D1D1; height: 25%; }
 
 .bar-label {
     position: absolute;
@@ -352,7 +497,6 @@ body, html {
     color: #555;
 }
 
-/* Tag Cloud Area */
 .tag-analytics-area {
     display: flex;
     flex-wrap: wrap;
@@ -361,7 +505,7 @@ body, html {
 }
 
 .pill-tag-analytics {
-    background: #D9D9D9;
+    background: #F0F0F0;
     padding: 10px 22px !important;
     border-radius: 50px;
     font-weight: 800;

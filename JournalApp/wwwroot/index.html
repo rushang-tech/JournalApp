@@ -7,69 +7,38 @@
     <base href="/" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Quill CSS -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
 
     <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="icon" href="data:,">
 </head>
 <body>
 <div id="app">Loading...</div>
 <script src="_framework/blazor.webview.js" autostart="false"></script>
 
-<!-- Quill JS -->
-<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-
+<!-- UPDATED: Rich Text Editor Logic -->
 <script>
-    var quillInstance = null;
-
-    window.initQuill = (dotNetHelper, initialContent) => {
-        // Check if container exists
-        var editorEl = document.getElementById('editor-container');
-        var toolbarEl = document.getElementById('toolbar-container');
-
-        if (!editorEl || !toolbarEl) return;
-
-        // If instance exists, we might need to reset it or just update content
-        // For simplicity in Blazor, we often clear the inner HTML if re-initializing
-        if (document.querySelector('.ql-editor')) {
-            // Already initialized, just set content
-            if (quillInstance) {
-                // Only update if empty or significantly different to avoid cursor jumps
-                if(quillInstance.root.innerHTML != initialContent) {
-                    quillInstance.root.innerHTML = initialContent || "";
-                }
+    window.editorUtils = {
+        // execute command directly
+        execCmd: (command) => {
+            document.execCommand(command, false, null);
+        },
+        // Get HTML for saving
+        getHtml: (elementId) => {
+            const el = document.getElementById(elementId);
+            return el ? el.innerHTML : "";
+        },
+        // Set HTML for loading
+        setHtml: (elementId, htmlContent) => {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.innerHTML = htmlContent || "";
             }
-            return;
-        }
-
-        quillInstance = new Quill('#editor-container', {
-            modules: {
-                toolbar: {
-                    container: '#toolbar-container' // Link to the bottom div
-                }
-            },
-            theme: 'snow',
-            placeholder: 'Start writing...'
-        });
-
-        // Set initial content
-        quillInstance.root.innerHTML = initialContent || "";
-
-        // Push changes back to C#
-        quillInstance.on('text-change', function() {
-            var html = quillInstance.root.innerHTML;
-            dotNetHelper.invokeMethodAsync('UpdateContent', html);
-        });
-    };
-
-    window.setQuillContent = (content) => {
-        if (quillInstance) {
-            quillInstance.root.innerHTML = content || "";
         }
     };
 </script>
+
 </body>
 </html>
