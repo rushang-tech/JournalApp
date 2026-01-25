@@ -57,6 +57,17 @@ namespace JournalApp.Services
             await Init();
             return await _db!.Table<JournalEntry>().OrderByDescending(e => e.EntryDate).ToListAsync();
         }
+
+        // --- NEW: Pagination for Requirement #6 ---
+        public async Task<List<JournalEntry>> GetEntriesPagedAsync(int skip, int take)
+        {
+            await Init();
+            return await _db!.Table<JournalEntry>()
+                            .OrderByDescending(e => e.EntryDate)
+                            .Skip(skip)
+                            .Take(take)
+                            .ToListAsync();
+        }
         
         public async Task DeleteEntryAsync(JournalEntry entry)
         {
@@ -138,15 +149,14 @@ namespace JournalApp.Services
             var entries = await GetEntriesByRangeAsync(start, end);
             if (!entries.Any()) return string.Empty;
 
-            // FIX: Use FileSystem.CacheDirectory to ensure write access on all platforms (Mac, iOS, Android)
+            string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
             string fileName = $"Journify_Export_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
-            string filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+            string filePath = Path.Combine(downloadsPath, fileName);
 
             using (PdfWriter writer = new PdfWriter(filePath))
             using (PdfDocument pdf = new PdfDocument(writer))
             using (Document document = new Document(pdf))
             {
-                // Header
                 document.Add(new Paragraph("Journify Export")
                     .SetFontSize(24)
                     .SetTextAlignment(iText.Layout.Properties.TextAlignment.CENTER));
@@ -159,35 +169,31 @@ namespace JournalApp.Services
 
                 foreach (var entry in entries)
                 {
-                    // Date & Mood
                     document.Add(new Paragraph($"{entry.EntryDate:D}  |  Mood: {entry.PrimaryMood}")
                         .SetFontSize(10)
                         .SetFontColor(ColorConstants.DARK_GRAY));
 
-                    // Title
                     if (!string.IsNullOrEmpty(entry.Title))
                     {
                         document.Add(new Paragraph(entry.Title)
                             .SetFontSize(16)
-                           // .SetBold()
                             .SetMarginBottom(5));
                     }
 
-                    // Content
-                    document.Add(new Paragraph(entry.Content ?? "")
+                    // Strip HTML tags for PDF text
+                    string cleanContent = System.Text.RegularExpressions.Regex.Replace(entry.Content ?? "", "<.*?>", String.Empty);
+                    
+                    document.Add(new Paragraph(cleanContent)
                         .SetFontSize(11)
                         .SetMarginBottom(10));
 
-                    // Tags
                     if (!string.IsNullOrEmpty(entry.Tags))
                     {
                         document.Add(new Paragraph($"Tags: {entry.Tags}")
                             .SetFontSize(9)
-                            //.SetItalic()
                             .SetFontColor(ColorConstants.GRAY));
                     }
 
-                    // Divider
                     document.Add(new Paragraph("___________________________________________________")
                         .SetFontColor(ColorConstants.LIGHT_GRAY)
                         .SetMarginBottom(20));

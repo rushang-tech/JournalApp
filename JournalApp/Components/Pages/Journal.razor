@@ -3,105 +3,277 @@
 @using JournalApp.Services
 @inject JournalService DbService
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
-<div class="d-flex flex-column h-100 position-relative p-4">
+<div class="journal-container">
     
-    <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-5">
-        <div class="text-secondary small fw-bold text-uppercase letter-spacing-1">
-            @currentEntry.EntryDate.ToString("MMMM dd • dddd").ToUpper()
-        </div>
-        
-        <div class="d-flex gap-2 align-items-center">
-            <!-- Mood Selection Logic (Primary & Secondary) -->
-            <div class="d-flex gap-1 me-3 align-items-center">
-                <span class="small text-muted me-2">Moods:</span>
-                @foreach(var mood in moods)
-                {
-                    bool isPrimary = currentEntry.PrimaryMood == mood;
-                    bool isSecondary = currentEntry.SecondaryMoods?.Split(',').Contains(mood) ?? false;
-                    
-                    <button class="btn btn-sm rounded-circle border d-flex align-items-center justify-content-center" 
-                            style="@(isPrimary ? "background:#1A1A1A; color:white; border-color:#1A1A1A;" : isSecondary ? "background:#6c757d; color:white; border-color:#6c757d;" : "background:white; border-color:#E5E5E5;") width:35px; height:35px; transition:all 0.2s;"
-                            @onclick="() => ToggleMood(mood)">
-                        @(mood == "Happy" ? "😊" : mood == "Neutral" ? "😐" : "😔")
-                    </button>
-                }
+    <!-- LEFT SIDEBAR: Navigation & History -->
+    <div class="journal-sidebar">
+        <div class="sidebar-header">
+            <h3 class="fw-bold mb-3">My Journal</h3>
+            
+            <!-- Requirement: Search -->
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Search..." @bind="searchText" @bind:after="PerformSearch" />
             </div>
 
-            <!-- Save Button -->
-            <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveEntry">
-                <i class="bi bi-check2 me-2"></i> Save
+            <!-- Requirement: Filter by Mood -->
+            <select class="mood-filter" @onchange="FilterByMood">
+                <option value="">All Moods</option>
+                <option value="Happy">Happy 😊</option>
+                <option value="Neutral">Neutral 😐</option>
+                <option value="Sad">Sad 😔</option>
+            </select>
+        </div>
+
+        <div class="entry-list">
+            <button class="btn-create-new" @onclick="CreateNew">
+                <i class="bi bi-plus-lg"></i> Create New Entry
+            </button>
+
+            @if (displayedEntries != null)
+            {
+                @foreach (var entry in displayedEntries)
+                {
+                    bool isActive = entry.Id == currentEntry.Id;
+                    <div class="entry-card @(isActive ? "active" : "")" @onclick="() => LoadEntry(entry)">
+                        <div class="entry-date">@entry.EntryDate.ToString("MMM dd, yyyy")</div>
+                        <div class="entry-title">@(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)</div>
+                        
+                        @if(!string.IsNullOrEmpty(entry.PrimaryMood))
+                        {
+                            <div class="entry-mood-badge">
+                                @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Neutral" ? "😐" : "😔")
+                            </div>
+                        }
+                    </div>
+                }
+            }
+
+            <!-- Requirement: Pagination -->
+            <button class="btn-load-more" @onclick="LoadMoreEntries">
+                Load More...
             </button>
         </div>
     </div>
 
-    <!-- EDITOR CANVAS -->
-    <div class="flex-grow-1 mx-auto w-100" style="max-width: 700px;">
+    <!-- RIGHT CONTENT: Editor -->
+    <div class="journal-editor-area">
         
-        @if (!isPreview)
-        {
-            <!-- Edit Mode: Figma Transparent Inputs -->
-            <input type="text" 
-                   class="w-100 border-0 bg-transparent fw-bold display-6 mb-4 zen-input" 
-                   placeholder="Title your day..." 
-                   @bind="currentEntry.Title" />
-            
-            <textarea class="w-100 border-0 bg-transparent fs-5 lh-lg zen-input" 
-                      style="height: 60vh; resize: none;" 
-                      placeholder="Start writing..." 
-                      @bind="currentEntry.Content"></textarea>
-                      
-            <input type="text" 
-                   class="w-100 border-0 bg-transparent text-secondary mt-3 zen-input" 
-                   style="font-size: 0.9rem;"
-                   placeholder="#AddTags..." 
-                   @bind="currentEntry.Tags" />
-        }
-        else
-        {
-            <!-- Preview Mode: Marking Scheme Item 2 -->
-            <div class="p-4 bg-light rounded shadow-sm overflow-auto" style="height: 75vh; border-radius: 16px;">
-                <h1 class="fw-bold">@currentEntry.Title</h1>
-                <hr />
-                <div class="mt-3" style="white-space: pre-wrap; line-height: 1.8;">@((MarkupString)(currentEntry.Content?.Replace("\n", "<br/>") ?? ""))</div>
-                <div class="mt-4">
-                    @if(!string.IsNullOrEmpty(currentEntry.Tags))
+        <!-- Header: Date, Moods, Save -->
+        <div class="editor-header">
+            <div>
+                <div class="editor-date">@currentEntry.EntryDate.ToString("dddd, MMMM dd, yyyy")</div>
+                <div class="editor-time text-muted small">@currentEntry.EntryDate.ToString("h:mm tt")</div>
+            </div>
+
+            <div class="editor-actions">
+                <!-- Requirement: Mood Tracking -->
+                <div class="mood-selector">
+                    @foreach(var mood in moods)
                     {
-                        @foreach(var tag in currentEntry.Tags.Split(','))
-                        {
-                            <span class="badge bg-secondary me-1">#@tag.Trim()</span>
-                        }
+                        bool isPrimary = currentEntry.PrimaryMood == mood;
+                        bool isSecondary = currentEntry.SecondaryMoods?.Contains(mood) ?? false;
+                        string btnClass = isPrimary ? "mood-primary" : (isSecondary ? "mood-secondary" : "mood-outline");
+
+                        <button class="mood-btn @btnClass" @onclick="() => ToggleMood(mood)" title="@mood">
+                            @(mood == "Happy" ? "😊" : mood == "Neutral" ? "😐" : "😔")
+                        </button>
                     }
                 </div>
-            </div>
-        }
-    </div>
 
-    <!-- FLOATING TOOLBAR -->
-    <div class="position-absolute bottom-0 start-50 translate-middle-x pb-4">
-        <div class="d-flex align-items-center gap-4 px-4 py-2 rounded-pill shadow-sm bg-white border">
-            <i class="bi bi-type-bold text-dark cursor-pointer" @onclick='() => AddFormatting("**")'></i>
-            <i class="bi bi-type-italic text-secondary cursor-pointer" @onclick='() => AddFormatting("_")'></i>
-            <i class="bi bi-list-ul text-secondary cursor-pointer" @onclick='() => AddFormatting("- ")'></i>
-            <div class="vr"></div>
-            <button class="btn btn-link btn-sm text-decoration-none text-dark p-0 fw-bold" @onclick="() => isPreview = !isPreview">
-                @(isPreview ? "BACK TO EDIT" : "PREVIEW")
-            </button>
+                <div class="vr mx-3"></div>
+
+                @if(currentEntry.Id != 0)
+                {
+                    <button class="action-btn text-danger" @onclick="DeleteCurrent" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                }
+                <button class="btn-save" @onclick="SaveEntry">Save</button>
+            </div>
         </div>
+
+        <!-- Requirement: Rich Text Toolbar (Top) -->
+        <!-- This ID links to Quill JS -->
+        <div id="toolbar-container" class="quill-toolbar">
+            <span class="ql-formats">
+                <button class="ql-bold"></button>
+                <button class="ql-italic"></button>
+                <button class="ql-underline"></button>
+                <button class="ql-strike"></button>
+            </span>
+            <span class="ql-formats">
+                <button class="ql-header" value="1"></button>
+                <button class="ql-header" value="2"></button>
+                <button class="ql-blockquote"></button>
+            </span>
+            <span class="ql-formats">
+                <button class="ql-list" value="ordered"></button>
+                <button class="ql-list" value="bullet"></button>
+            </span>
+            <span class="ql-formats">
+                <button class="ql-clean"></button>
+            </span>
+        </div>
+
+        <!-- Editor Canvas -->
+        <div class="editor-wrapper">
+            <input type="text" class="title-input" placeholder="Title your entry..." @bind="currentEntry.Title" />
+            
+            <!-- Quill Editor Mount Point -->
+            <div id="editor-container"></div>
+        </div>
+
+        <!-- Requirement: Tags -->
+        <div class="editor-footer">
+            <div class="tags-container">
+                <i class="bi bi-tags-fill text-muted me-2"></i>
+                <input type="text" class="tags-input" placeholder="Tags (comma separated)..." @bind="currentEntry.Tags" />
+            </div>
+        </div>
+
     </div>
 </div>
 
 <style>
-    /* Figma-style Transparency */
-    .zen-input { 
-        outline: none !important; 
-        box-shadow: none !important;
-        background-color: transparent !important;
+    /* --- RESET & LAYOUT --- */
+    .journal-container {
+        display: flex;
+        width: 100%;
+        height: 100vh;
+        background-color: #F5F5F5;
+        font-family: 'Poppins', sans-serif;
+        /* Reset any previous negative margins */
+        margin: 0; 
+        overflow: hidden;
     }
-    .zen-input::placeholder { color: #ccc; }
-    .cursor-pointer { cursor: pointer; }
-    .letter-spacing-1 { letter-spacing: 1px; }
+
+    /* --- SIDEBAR --- */
+    .journal-sidebar {
+        width: 300px;
+        min-width: 300px;
+        background-color: #FFFFFF;
+        border-right: 1px solid #E0E0E0;
+        display: flex;
+        flex-direction: column;
+        z-index: 2;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+    }
+
+    .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid #F0F0F0;
+        background: #FAFAFA;
+    }
+
+    .search-box {
+        background: #FFF; border: 1px solid #DDD; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .search-box input { border: none; outline: none; width: 100%; font-size: 14px; }
+    
+    .mood-filter { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #DDD; background: #FFF; font-size: 14px; color: #555; }
+
+    .entry-list {
+        flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .btn-create-new {
+        background: #1A1A1A; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 10px;
+    }
+    .btn-create-new:hover { opacity: 0.9; }
+
+    .entry-card {
+        background: #FFF; border: 1px solid #EEE; border-radius: 8px; padding: 12px; cursor: pointer; position: relative; transition: 0.1s;
+    }
+    .entry-card:hover { background: #F9F9F9; border-color: #CCC; }
+    .entry-card.active { border-left: 4px solid #1A1A1A; background: #F4F4F4; }
+
+    .entry-date { font-size: 12px; color: #888; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+    .entry-title { font-size: 15px; font-weight: 700; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .entry-mood-badge { position: absolute; top: 12px; right: 12px; font-size: 14px; }
+
+    .btn-load-more { background: none; border: none; color: #666; text-decoration: underline; cursor: pointer; padding: 10px; font-size: 13px; }
+
+    /* --- EDITOR AREA --- */
+    .journal-editor-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #FFFFFF;
+        height: 100%;
+    }
+
+    .editor-header {
+        padding: 15px 30px;
+        border-bottom: 1px solid #F0F0F0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #FFF;
+    }
+
+    .editor-date { font-size: 18px; font-weight: 700; color: #1A1A1A; }
+    .editor-actions { display: flex; align-items: center; gap: 15px; }
+
+    /* Mood Buttons */
+    .mood-selector { display: flex; gap: 5px; }
+    .mood-btn {
+        width: 35px; height: 35px; border-radius: 50%; border: 1px solid transparent; background: transparent; font-size: 1.2rem; cursor: pointer; transition: 0.2s;
+    }
+    .mood-primary { background: #1A1A1A; border-color: #1A1A1A; transform: scale(1.1); }
+    .mood-secondary { background: #E0E0E0; border-color: #CCC; }
+    .mood-outline { border-color: #EEE; opacity: 0.4; filter: grayscale(100%); }
+    .mood-outline:hover { opacity: 1; background: #F9F9F9; }
+
+    .btn-save { background: #1A1A1A; color: white; border: none; padding: 8px 24px; border-radius: 20px; font-weight: 600; cursor: pointer; }
+    .action-btn { background: none; border: none; font-size: 20px; cursor: pointer; }
+
+    /* Quill Toolbar */
+    .quill-toolbar {
+        border-bottom: 1px solid #EEE !important;
+        background: #FAFAFA;
+        padding: 8px 30px !important;
+    }
+    .ql-toolbar.ql-snow { border: none !important; }
+
+    /* Content Wrapper */
+    .editor-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        padding: 30px 50px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .title-input {
+        font-size: 32px; font-weight: 800; border: none; outline: none; width: 100%; margin-bottom: 20px; color: #1A1A1A;
+    }
+    .title-input::placeholder { color: #CCC; }
+
+    /* Quill Editor Adjustments */
+    #editor-container {
+        flex: 1;
+        font-size: 18px;
+        line-height: 1.8;
+        color: #333;
+        min-height: 300px;
+    }
+    .ql-container.ql-snow { border: none !important; font-family: 'Poppins', sans-serif !important; }
+    .ql-editor { padding: 0 !important; }
+    .ql-editor.ql-blank::before { font-style: normal; color: #BBB; }
+
+    /* Footer */
+    .editor-footer {
+        padding: 15px 30px;
+        border-top: 1px solid #F0F0F0;
+        background: #FAFAFA;
+    }
+    .tags-container {
+        display: flex; align-items: center; background: white; border: 1px solid #DDD; padding: 8px 15px; border-radius: 8px;
+    }
+    .tags-input { border: none; outline: none; width: 100%; font-size: 14px; }
 </style>
 
 @code {
@@ -109,79 +281,137 @@
     public string? Date { get; set; }
 
     private JournalEntry currentEntry = new JournalEntry { EntryDate = DateTime.Now };
+    private List<JournalEntry> displayedEntries = new();
     private string[] moods = { "Happy", "Neutral", "Sad" };
-    private bool isPreview = false;
+    private string searchText = "";
+    private string moodFilter = "";
+    private int pageSize = 15;
+    private int currentPage = 0;
+    
+    // JS Interop Reference
+    private DotNetObjectReference<object>? objRef;
 
     protected override async Task OnInitializedAsync()
     {
+        objRef = DotNetObjectReference.Create((object)this);
+        await LoadSidebar(reset: true);
+        
         DateTime targetDate = DateTime.Now;
-
         if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out DateTime parsedDate))
         {
             targetDate = parsedDate;
+            var existing = await DbService.GetEntryByDateAsync(targetDate);
+            if (existing != null) currentEntry = existing;
+            else currentEntry = new JournalEntry { EntryDate = targetDate };
         }
-
-        currentEntry.EntryDate = targetDate;
-
-        var existing = await DbService.GetEntryByDateAsync(targetDate);
-        if (existing != null) 
+        else if (displayedEntries.Any())
         {
-            currentEntry = existing;
+            currentEntry = displayedEntries.First();
         }
-        else 
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            currentEntry = new JournalEntry { EntryDate = targetDate };
+            await Task.Delay(200); 
+            await JS.InvokeVoidAsync("initQuill", objRef, currentEntry.Content);
         }
+    }
+
+    [JSInvokable]
+    public void UpdateContent(string htmlContent)
+    {
+        currentEntry.Content = htmlContent;
+    }
+
+    private async Task LoadSidebar(bool reset = false)
+    {
+        if (reset) { currentPage = 0; displayedEntries.Clear(); }
+        var newBatch = await DbService.GetEntriesPagedAsync(currentPage * pageSize, pageSize);
+        if (newBatch.Any())
+        {
+            displayedEntries.AddRange(newBatch);
+            currentPage++;
+        }
+    }
+
+    private async Task LoadMoreEntries() => await LoadSidebar(reset: false);
+
+    private async Task PerformSearch()
+    {
+        var all = await DbService.GetAllEntriesAsync();
+        IEnumerable<JournalEntry> query = all;
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            query = query.Where(e => 
+                (e.Title != null && e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase)) || 
+                (e.Content != null && e.Content.Contains(searchText, StringComparison.OrdinalIgnoreCase)));
+        }
+        if (!string.IsNullOrWhiteSpace(moodFilter))
+        {
+            query = query.Where(e => e.PrimaryMood == moodFilter || (e.SecondaryMoods != null && e.SecondaryMoods.Contains(moodFilter)));
+        }
+        displayedEntries = query.ToList();
+    }
+
+    private async Task FilterByMood(ChangeEventArgs e)
+    {
+        moodFilter = e.Value?.ToString() ?? "";
+        await PerformSearch();
+    }
+
+    private async Task LoadEntry(JournalEntry entry)
+    {
+        currentEntry = entry;
+        await JS.InvokeVoidAsync("setQuillContent", currentEntry.Content);
+    }
+
+    private async Task CreateNew()
+    {
+        currentEntry = new JournalEntry { EntryDate = DateTime.Now };
+        await JS.InvokeVoidAsync("setQuillContent", "");
     }
 
     private void ToggleMood(string mood)
     {
-        // 1. If no primary mood, set it
-        if (string.IsNullOrEmpty(currentEntry.PrimaryMood))
-        {
-            currentEntry.PrimaryMood = mood;
-        }
-        // 2. If clicking the primary again, remove it
-        else if (currentEntry.PrimaryMood == mood)
-        {
-            currentEntry.PrimaryMood = string.Empty;
-        }
-        // 3. Otherwise, manage as Secondary (Max 2)
+        if (currentEntry.PrimaryMood == mood) currentEntry.PrimaryMood = string.Empty;
+        else if (string.IsNullOrEmpty(currentEntry.PrimaryMood)) currentEntry.PrimaryMood = mood;
         else
         {
-            var secondaryList = string.IsNullOrEmpty(currentEntry.SecondaryMoods) 
-                ? new List<string>() 
-                : currentEntry.SecondaryMoods.Split(',').ToList();
-
-            if (secondaryList.Contains(mood))
-            {
-                secondaryList.Remove(mood);
-            }
-            else if (secondaryList.Count < 2)
-            {
-                secondaryList.Add(mood);
-            }
-            
-            currentEntry.SecondaryMoods = string.Join(",", secondaryList);
+            var secs = string.IsNullOrEmpty(currentEntry.SecondaryMoods) ? new List<string>() : currentEntry.SecondaryMoods.Split(',').ToList();
+            if (secs.Contains(mood)) secs.Remove(mood);
+            else if (secs.Count < 2) secs.Add(mood);
+            currentEntry.SecondaryMoods = string.Join(",", secs);
         }
-    }
-
-    private void AddFormatting(string syntax)
-    {
-        // Simple Markdown append logic
-        currentEntry.Content += $" {syntax}text{syntax} ";
     }
 
     private async Task SaveEntry()
     {
-        try 
-        {
+        try {
             await DbService.SaveEntryAsync(currentEntry);
-            await JS.InvokeVoidAsync("alert", "Journal saved successfully!");
+            await PerformSearch(); 
+            await JS.InvokeVoidAsync("alert", "Saved!");
         }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("alert", "Error saving: " + ex.Message);
+        catch (Exception ex) { await JS.InvokeVoidAsync("alert", ex.Message); }
+    }
+
+    private async Task DeleteCurrent()
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Delete?")) {
+            await DbService.DeleteEntryAsync(currentEntry);
+            await LoadSidebar(reset: true);
+            if (displayedEntries.Any()) await LoadEntry(displayedEntries.First());
+            else await CreateNew();
         }
     }
+
+    private string StripHtml(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return "";
+        return System.Text.RegularExpressions.Regex.Replace(input, "<.*?>", String.Empty);
+    }
+
+    public void Dispose() { objRef?.Dispose(); }
 }

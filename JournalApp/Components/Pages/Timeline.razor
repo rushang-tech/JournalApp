@@ -56,7 +56,7 @@
                             }
                         </div>
                         <p class="text-secondary mb-0 text-truncate" style="max-width: 350px;">
-                            @entry.Content
+                            @(StripHtml(entry.Content ?? ""))
                         </p>
                         @if (!string.IsNullOrEmpty(entry.Tags))
                         {
@@ -75,8 +75,8 @@
 </div>
 
 @code {
-    private List<JournalEntry> allEntries;
-    private List<JournalEntry> filteredEntries;
+    private List<JournalEntry> allEntries = new();
+    private List<JournalEntry> filteredEntries = new();
     private string searchText = "";
 
     protected override async Task OnInitializedAsync()
@@ -92,13 +92,28 @@
 
     private void FilterEntries()
     {
-        if (string.IsNullOrWhiteSpace(searchText)) filteredEntries = allEntries;
-        else filteredEntries = allEntries.Where(e => (e.Title?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) || (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+        if (string.IsNullOrWhiteSpace(searchText)) 
+        {
+            filteredEntries = allEntries;
+        }
+        else 
+        {
+            filteredEntries = allEntries.Where(e => 
+                (e.Title?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) || 
+                (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)
+            ).ToList();
+        }
     }
 
     private async Task DeleteEntry(JournalEntry entry)
     {
         await DbService.DeleteEntryAsync(entry);
         await LoadData();
+    }
+
+    private string StripHtml(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return "";
+        return System.Text.RegularExpressions.Regex.Replace(input, "<.*?>", String.Empty);
     }
 }
