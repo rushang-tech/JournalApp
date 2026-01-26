@@ -153,11 +153,49 @@ body, html {
     cursor: text;
     white-space: pre-wrap;
 }
+/* --- VALIDATION ANIMATIONS --- */
 
+.shake-animation {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    border: 1px solid #dc3545 !important; /* Optional: adds a red border hint during shake */
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.save-error-text {
+    color: #dc3545; /* Red color */
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 12px; /* Increased to fix spacing */
+    animation: fadeIn 0.3s ease-in;
+    white-space: nowrap;
+    position: absolute; /* Keeps layout stable */
+    top: 100%; /* Positions it directly below the button */
+    right: 0; /* Aligns to the right edge of the button */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* PLACEHOLDER LOGIC */
+/* 1. Show placeholder when empty */
 .rich-text-editor[contenteditable]:empty::before {
     content: attr(placeholder);
-    color: #ccc;
+    color: #B0B0B0; /* Light text color */
     display: block;
+    cursor: text;
+}
+
+/* 2. Hide placeholder when clicked (Focused) */
+.rich-text-editor[contenteditable]:focus::before {
+    display: none;
+    content: "";
 }
 
 /* ADD ENTRY BUTTON FIX */

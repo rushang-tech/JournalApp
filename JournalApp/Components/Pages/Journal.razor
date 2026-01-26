@@ -42,7 +42,7 @@
                 {
                     @foreach(var entry in pastEntries)
                     {
-                        bool isActive = entry.Id == currentEntry.Id;
+                        bool isActive = entry.Id == currentEntry.Id && entry.Id != 0; // Only highlight if it's a saved entry
                         
                         <div class="p-3 rounded-4 cursor-pointer sidebar-entry-item @(isActive ? "active" : "inactive")"
                              @onclick="() => LoadEntry(entry)">
@@ -82,30 +82,53 @@
             
             <div class="d-flex gap-2 align-items-center">
                 <!-- Mood Selection -->
-                <div class="d-flex gap-1 me-3 align-items-center">
+                <div class="d-flex gap-1 me-2 align-items-center">
                     <span class="small text-muted me-2">Moods:</span>
-                    @foreach(var mood in moods)
-                    {
-                        bool isPrimary = currentEntry.PrimaryMood == mood;
-                        bool isSecondary = currentEntry.SecondaryMoods?.Split(',').Contains(mood) ?? false;
-                        
-                        <button class="btn btn-sm rounded-circle border d-flex align-items-center justify-content-center" 
-                                style="@(isPrimary ? "background:#1A1A1A; color:white; border-color:#1A1A1A;" : isSecondary ? "background:#6c757d; color:white; border-color:#6c757d;" : "background:white; border-color:#E5E5E5;") width:35px; height:35px; transition:all 0.2s;"
-                                @onclick="() => ToggleMood(mood)">
-                            @(mood == "Happy" ? "😊" : mood == "Neutral" ? "😐" : "😔")
-                        </button>
-                    }
+                    
+                    <!-- WRAPPER FOR MOOD BUTTONS TO APPLY SHAKE ANIMATION -->
+                    <div class="d-flex gap-1 p-1 rounded-pill @(triggerShake ? "shake-animation" : "")" style="transition: background-color 0.2s;">
+                        @foreach(var mood in moods)
+                        {
+                            bool isPrimary = currentEntry.PrimaryMood == mood;
+                            
+                            <button class="btn btn-sm rounded-circle border d-flex align-items-center justify-content-center" 
+                                    style="@(isPrimary ? "background:#1A1A1A; color:white; border-color:#1A1A1A;" : "background:white; border-color:#E5E5E5;") width:35px; height:35px; transition:all 0.2s;"
+                                    @onclick="() => ToggleMood(mood)">
+                                @(mood == "Happy" ? "😊" : mood == "Neutral" ? "😐" : "😔")
+                            </button>
+                        }
+                    </div>
                 </div>
 
-                <!-- Save Button -->
-                <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveEntry">
-                    <i class="bi bi-check2 me-2"></i> Save
-                </button>
+                <!-- DELETE BUTTON (Only shows if entry exists in DB) -->
+                @if(currentEntry.Id != 0)
+                {
+                    <button class="btn btn-outline-danger border-0 rounded-circle d-flex align-items-center justify-content-center me-2"
+                            style="width: 40px; height: 40px; transition: all 0.2s;"
+                            title="Delete this note"
+                            @onclick="DeleteCurrentEntry">
+                        <i class="bi bi-trash3" style="font-size: 1.1rem;"></i>
+                    </button>
+                }
+
+                <!-- Save Button Wrapper (Relative for absolute positioning of error text) -->
+                <div class="position-relative">
+                    <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveEntry">
+                        <i class="bi bi-check2 me-2"></i> Save
+                    </button>
+                    
+                    <!-- ERROR TEXT DISPLAY -->
+                    @if (showMoodError)
+                    {
+                        <div class="save-error-text">
+                            Please select an emoji first!
+                        </div>
+                    }
+                </div>
             </div>
         </div>
 
         <!-- VISUAL EDITOR CANVAS -->
-        <!-- Logic: If sidebar open, max 900px. If collapsed, max 1200px. Smooth transition via style. -->
         <div class="flex-grow-1 mx-auto w-100" 
              style="max-width: @(isSidebarOpen ? "900px" : "1200px"); transition: max-width 0.4s ease; overflow-y: auto; padding-bottom: 80px;">
             
@@ -117,7 +140,6 @@
                        placeholder="Title your day..." 
                        @bind="currentEntry.Title" />
                 
-                <!-- CONTENTEDITABLE DIV -->
                 <div id="richEditor"
                      class="rich-text-editor w-100" 
                      contenteditable="true"
@@ -265,17 +287,22 @@
     private List<JournalEntry> searchResults = new();
     private ElementReference searchInput;
 
+    // --- VALIDATION STATE ---
+    private bool triggerShake = false;
+    private bool showMoodError = false;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadList();
         
-        DateTime targetDate = DateTime.Now;
         if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out DateTime parsedDate))
         {
-            targetDate = parsedDate;
+            await LoadEntryByDate(parsedDate);
         }
-        
-        await LoadEntryByDate(targetDate);
+        else
+        {
+            CreateNew(); 
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -286,7 +313,6 @@
             shouldRenderEditorContent = false;
         }
         
-        // Auto-focus search input when opened
         if (showSearch)
         {
             await searchInput.FocusAsync();
@@ -345,9 +371,16 @@
     private async Task LoadEntryByDate(DateTime date)
     {
         var existing = await DbService.GetEntryByDateAsync(date);
-        if (existing != null) currentEntry = existing;
-        else currentEntry = new JournalEntry { EntryDate = date };
+        if (existing != null) 
+        {
+            currentEntry = existing;
+        }
+        else 
+        {
+            currentEntry = new JournalEntry { EntryDate = date };
+        }
         
+        ResetValidation();
         shouldRenderEditorContent = true; 
         StateHasChanged();
     }
@@ -355,6 +388,7 @@
     private async Task LoadEntry(JournalEntry entry)
     {
         currentEntry = entry;
+        ResetValidation();
         isPreview = false;
         shouldRenderEditorContent = true;
         StateHasChanged();
@@ -363,9 +397,16 @@
     private void CreateNew()
     {
         currentEntry = new JournalEntry { EntryDate = DateTime.Now };
+        ResetValidation();
         isPreview = false;
         shouldRenderEditorContent = true;
         StateHasChanged();
+    }
+
+    private void ResetValidation()
+    {
+        showMoodError = false;
+        triggerShake = false;
     }
 
     private async Task TogglePreview()
@@ -382,23 +423,34 @@
 
     private void ToggleMood(string mood)
     {
-        if (string.IsNullOrEmpty(currentEntry.PrimaryMood)) currentEntry.PrimaryMood = mood;
-        else if (currentEntry.PrimaryMood == mood) currentEntry.PrimaryMood = string.Empty;
+        ResetValidation();
+
+        // Strict Single Selection Logic
+        if (currentEntry.PrimaryMood == mood)
+        {
+            currentEntry.PrimaryMood = string.Empty;
+        }
         else
         {
-            var secondaryList = string.IsNullOrEmpty(currentEntry.SecondaryMoods) 
-                ? new List<string>() 
-                : currentEntry.SecondaryMoods.Split(',').ToList();
-
-            if (secondaryList.Contains(mood)) secondaryList.Remove(mood);
-            else if (secondaryList.Count < 2) secondaryList.Add(mood);
-            
-            currentEntry.SecondaryMoods = string.Join(",", secondaryList);
+            currentEntry.PrimaryMood = mood;
         }
+        currentEntry.SecondaryMoods = string.Empty;
     }
 
     private async Task SaveEntry()
     {
+        if (string.IsNullOrEmpty(currentEntry.PrimaryMood))
+        {
+            triggerShake = true;
+            showMoodError = true;
+            StateHasChanged();
+
+            await Task.Delay(500); 
+            triggerShake = false;
+            StateHasChanged();
+            return;
+        }
+
         try 
         {
             string htmlContent = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
@@ -412,6 +464,28 @@
         catch (Exception ex)
         {
             await JS.InvokeVoidAsync("alert", "Error saving: " + ex.Message);
+        }
+    }
+
+    // --- DELETE LOGIC ---
+    private async Task DeleteCurrentEntry()
+    {
+        if (currentEntry.Id == 0) return;
+
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this note? This cannot be undone.");
+        if (confirmed)
+        {
+            try 
+            {
+                await DbService.DeleteEntryAsync(currentEntry);
+                await LoadList();
+                CreateNew(); // Reset UI to a fresh note
+                await JS.InvokeVoidAsync("alert", "Note deleted.");
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", "Error deleting: " + ex.Message);
+            }
         }
     }
 }

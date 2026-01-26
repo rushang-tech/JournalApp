@@ -4,131 +4,419 @@
 @inject JournalService DbService
 @inject NavigationManager Nav
 
-<div class="dashboard-wrapper">
-    <!-- Header -->
-    <div class="header">
-        <div>
-            <div class="date" style="color: var(--text-muted);">@DateTime.Now.ToString("dddd, MMM dd").ToUpper()</div>
-            <h1 class="title">Good Evening, Rushang</h1>
+<div class="dashboard-container fade-in">
+
+    <!-- 1. GREETING HEADER -->
+    <header class="dashboard-header">
+        <div class="header-left">
+            <div class="date-badge">
+                <i class="bi bi-calendar4-week"></i> @DateTime.Now.ToString("dddd, MMMM dd")
+            </div>
+            <h1 class="greeting-title">
+                Good @GetTimeOfDay(), <span class="highlight-name">@Environment.UserName</span>
+            </h1>
         </div>
-        <div class="streak">
-            🔥 @currentStreak DAY STREAK
+
+        <!-- Quick Action -->
+        <button class="primary-btn" @onclick='() => Nav.NavigateTo("journal")'>
+            <i class="bi bi-plus-lg"></i> New Entry
+        </button>
+    </header>
+
+    <!-- 2. HERO SECTION (Daily Prompt) -->
+    <section class="hero-card" @onclick='() => Nav.NavigateTo("journal")'>
+        <div class="hero-content">
+            <span class="hero-label"><i class="bi bi-lightbulb-fill"></i> DAILY REFLECTION</span>
+            <h2 class="hero-text">"@dailyPrompt"</h2>
+            <div class="hero-footer">
+                <span>Tap to write your thoughts...</span>
+                <i class="bi bi-arrow-right-circle-fill arrow-icon"></i>
+            </div>
+        </div>
+        <!-- Decorative Background Element -->
+        <div class="hero-blob"></div>
+    </section>
+
+    <!-- 3. STATS GRID (Now spans full width) -->
+    <div class="widgets-grid">
+        <!-- Stat 1: Entries -->
+        <div class="widget-card">
+            <div class="icon-circle purple-bg"><i class="bi bi-journal-text"></i></div>
+            <div class="widget-text">
+                <h3 class="widget-value">@entryCount</h3>
+                <span class="widget-label">Total Entries</span>
+            </div>
+        </div>
+
+        <!-- Stat 2: Streak -->
+        <div class="widget-card">
+            <div class="icon-circle orange-bg"><i class="bi bi-fire"></i></div>
+            <div class="widget-text">
+                <h3 class="widget-value">@currentStreak</h3>
+                <span class="widget-label">Day Streak</span>
+            </div>
+        </div>
+
+        <!-- Stat 3: Words -->
+        <div class="widget-card">
+            <div class="icon-circle blue-bg"><i class="bi bi-bar-chart-steps"></i></div>
+            <div class="widget-text">
+                <h3 class="widget-value">@totalWords</h3>
+                <span class="widget-label">Words Written</span>
+            </div>
         </div>
     </div>
 
-    <!-- Black Hero Card -->
-    <div class="hero-card" @onclick='() => Nav.NavigateTo("journal")'>
-        <div class="hero-text">
-            <h2>@dailyPrompt</h2>
-            <p>Start writing...</p>
-        </div>
-        <div class="hero-icon">
-            <i class="bi bi-pencil-square"></i>
-        </div>
-    </div>
+    <!-- 4. CONTENT SPLIT -->
+    <div class="content-split">
 
-    <!-- Bottom Stats (Pills) -->
-    <div class="stats-row">
-        <div class="stat-pill">
-            <h1>@totalWords</h1>
-            <span style="color: var(--text-muted);">WORDS WRITTEN</span>
-        </div>
-        <div class="stat-pill">
-            <h1>@entryCount</h1>
-            <span style="color: var(--text-muted);">TOTAL ENTRIES</span>
-        </div>
-    </div>
+        <!-- LEFT: Recent Entries (Takes more space) -->
+        <div class="recent-column">
+            <div class="section-header">
+                <h3>Recent Memories</h3>
+                <a href="timeline" class="view-link">View Timeline</a>
+            </div>
 
-    <!-- Recent List -->
-    <div class="mt-5">
-        <h4 class="mb-3 fw-bold">Recent Activity</h4>
-        @if(recentEntries.Any())
-        {
-            @foreach(var entry in recentEntries.Take(3))
-            {
-                <div class="activity-row mb-2">
-                    <div class="fw-bold me-3 text-center" style="width: 40px">
-                        @entry.EntryDate.Day <br> <small style="color: var(--text-muted);">@entry.EntryDate.ToString("MMM")</small>
+            <div class="entries-list">
+                @if(recentEntries.Any())
+                {
+                @foreach(var entry in recentEntries.Take(3))
+                {
+                <div class="entry-card" @onclick='() => Nav.NavigateTo($"journal?date={entry.EntryDate:yyyy-MM-dd}")'>
+                    <div class="entry-date-box">
+                        <span class="d-day">@entry.EntryDate.Day</span>
+                        <span class="d-month">@entry.EntryDate.ToString("MMM")</span>
                     </div>
-                    <div>
-                        <div class="fw-bold">@(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)</div>
-                        <div class="small" style="color: var(--text-muted);">@entry.Content</div>
+                    <div class="entry-details">
+                        <div class="entry-title">@(string.IsNullOrEmpty(entry.Title) ? "Untitled Entry" : entry.Title)</div>
+                        <div class="entry-snippet">@(StripHtml(entry.Content ?? "No content..."))</div>
                     </div>
-                    <div class="ms-auto fs-4">
-                        @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐")
-                    </div>
+                    <div class="entry-mood">@GetMoodEmoji(entry.PrimaryMood)</div>
                 </div>
-            }
-        }
-        else
-        {
-            <p style="color: var(--text-muted);">No entries yet. Start your journey today.</p>
-        }
+                }
+                }
+                else
+                {
+                <div class="empty-placeholder">
+                    <i class="bi bi-journal-album"></i>
+                    <p>No entries yet. Start writing today!</p>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- RIGHT: Mood Visualizer -->
+        <div class="visualizer-column">
+            <div class="mood-widget-card h-100">
+                <div class="mood-header">
+                    <h3>Emotional Footprint</h3>
+                    <span class="badge bg-light text-dark">Last 7 Entries</span>
+                </div>
+
+                <div class="mood-dots-container mt-4">
+                    @if(recentEntries.Any())
+                    {
+                    @foreach(var entry in recentEntries.Take(7))
+                    {
+                    <div class="mood-dot-wrapper">
+                        <div class="mood-dot @GetMoodClass(entry.PrimaryMood)"></div>
+                        <span class="mood-dot-date">@entry.EntryDate.ToString("MMM dd")</span>
+                    </div>
+                    }
+                    }
+                    else
+                    {
+                    <div class="text-muted small">No data yet.</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Tip Card -->
+            <div class="tip-card mt-4">
+                <i class="bi bi-stars fs-4"></i>
+                <div>
+                    <strong>Daily Tip:</strong>
+                    <p class="m-0 small opacity-75">Writing just 5 minutes a day can reduce stress by 30%.</p>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
-<div class="alert alert-info mt-4" role="alert">
-    <strong>Database Location:</strong> <br/>
-    <small>@dbPath</small>
+
 </div>
 
 @code {
-    private int currentStreak = 0;
-    private int totalWords = 0;
-    private int entryCount = 0;
-    // Fixes CS8618 Warning: Initialize the list
-    private List<JournalEntry> recentEntries = new List<JournalEntry>();
-    private string dailyPrompt = "How do you do? Today tomoro ahah welcome back";
-    private string dbPath = System.IO.Path.Combine(FileSystem.AppDataDirectory, "MyJournal.db");
+private int currentStreak = 0;
+private int totalWords = 0;
+private int entryCount = 0;
+private List<JournalEntry> recentEntries = new List<JournalEntry>();
+private string dailyPrompt = "What's on your mind?";
 
-    protected override async Task OnInitializedAsync()
-    {
-        // 1. Load Stats
-        currentStreak = await DbService.GetCurrentStreakAsync();
-        totalWords = await DbService.GetTotalWordsAsync();
-        var all = await DbService.GetAllEntriesAsync();
-        entryCount = all.Count;
-        recentEntries = all;
+protected override async Task OnInitializedAsync()
+{
+currentStreak = await DbService.GetCurrentStreakAsync();
+totalWords = await DbService.GetTotalWordsAsync();
+var all = await DbService.GetAllEntriesAsync();
 
-        // 2. CHECK IF USER WROTE TODAY
-        // We ask the DB: "Do we have a row for today's date?"
-        var todayEntry = await DbService.GetEntryByDateAsync(DateTime.Now);
+entryCount = all.Count;
+recentEntries = all;
 
-        if (todayEntry != null)
-        {
-            // Case: They already wrote something today
-            dailyPrompt = "Great start! Want to add more details?";
-        }
-        else
-        {
-            // Case: No entry found for today
-            dailyPrompt = "Your day is a blank canvas. Start writing...";
-        }
-    }
+var todayEntry = await DbService.GetEntryByDateAsync(DateTime.Now);
+if (todayEntry != null && !string.IsNullOrEmpty(todayEntry.Content))
+{
+dailyPrompt = "Keep the momentum going! Want to add more?";
+}
+else
+{
+dailyPrompt = GetRandomPrompt();
+}
+}
+
+private string GetTimeOfDay()
+{
+var hour = DateTime.Now.Hour;
+if (hour < 12) return "Morning";
+if (hour < 18) return "Afternoon";
+return "Evening";
+}
+
+private string GetRandomPrompt()
+{
+var prompts = new[]
+{
+"What made you smile today?",
+"What is one thing you learned today?",
+"How are you feeling right now?",
+"What are you grateful for?",
+"Who did you connect with today?"
+};
+return prompts[new Random().Next(prompts.Length)];
+}
+
+private string StripHtml(string input)
+{
+if (string.IsNullOrEmpty(input)) return "";
+var noHtml = System.Text.RegularExpressions.Regex.Replace(input, "<.*?>", String.Empty);
+return noHtml.Length > 80 ? noHtml.Substring(0, 80) + "..." : noHtml;
+}
+
+private string GetMoodEmoji(string? mood) => mood switch
+{
+"Happy" => "😊",
+"Sad" => "😔",
+"Neutral" => "😐",
+_ => "✨"
+};
+
+private string GetMoodClass(string? mood) => mood switch
+{
+"Happy" => "dot-happy",
+"Sad" => "dot-sad",
+"Neutral" => "dot-neutral",
+_ => "dot-neutral"
+};
 }
 
 <style>
-    .dashboard-wrapper { padding: 40px; max-width: 1200px; margin: 0 auto; }
-    .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
-    .title { font-weight: 900; font-size: 3.5rem; margin: 0; line-height: 1; }
-    .streak { font-weight: 800; font-size: 1.1rem; }
+    /* --- CONTAINER & LAYOUT --- */
+    .dashboard-container {
+        width: 100%;
+        max-width: 1600px; /* Increased massively from 1100px */
+        margin: 0 auto;
+        padding: 50px 60px; /* More padding on sides */
+        font-family: 'Poppins', sans-serif;
+        color: #1A1A1A;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 40px; /* Increased vertical gap */
+    }
 
+    /* Animation */
+    .fade-in { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
+    @@keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+    /* --- 1. HEADER --- */
+    .dashboard-header {
+        display: flex; justify-content: space-between; align-items: flex-end;
+    }
+
+    .date-badge {
+        font-size: 0.9rem; font-weight: 700; color: #888;
+        text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;
+    }
+
+    .greeting-title {
+        font-size: 3.5rem; font-weight: 900; line-height: 1.1; margin: 0;
+        letter-spacing: -2px;
+    }
+    .highlight-name { color: #512BD4; }
+
+    .primary-btn {
+        background: #1A1A1A; color: white; border: none;
+        padding: 14px 28px; border-radius: 50px;
+        font-weight: 700; font-size: 1rem; cursor: pointer;
+        display: flex; align-items: center; gap: 10px;
+        transition: transform 0.2s;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        white-space: nowrap;
+    }
+    .primary-btn:hover { transform: translateY(-2px); }
+
+    /* --- 2. HERO CARD (Daily Prompt) --- */
     .hero-card {
-        background: #000; color: white; border-radius: 30px; padding: 40px;
+        background: #1A1A1A; /* Dark Theme */
+        border-radius: 32px;
+        padding: 60px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+        min-height: 250px; /* Force height */
+        display: flex; align-items: center;
+    }
+    .hero-card:hover { transform: scale(1.01); }
+
+    .hero-content { position: relative; z-index: 2; width: 100%; }
+    .hero-label {
+        font-size: 0.8rem; font-weight: 700; letter-spacing: 2px;
+        color: rgba(255,255,255,0.6); display: block; margin-bottom: 20px;
+    }
+    .hero-text {
+        font-size: 2.5rem; font-weight: 800; line-height: 1.2;
+        margin-bottom: 40px; max-width: 80%;
+    }
+
+    .hero-footer {
+        display: flex; align-items: center; gap: 12px; font-weight: 600; opacity: 0.9; font-size: 1.1rem;
+    }
+    .arrow-icon { font-size: 1.6rem; }
+
+    .hero-blob {
+        position: absolute; right: -50px; bottom: -50px;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(81, 43, 212, 0.5) 0%, rgba(0,0,0,0) 70%);
+        border-radius: 50%; pointer-events: none;
+    }
+
+    /* --- 3. WIDGETS GRID (Spreads out) --- */
+    .widgets-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr); /* Equal thirds */
+        gap: 30px;
+    }
+
+    .widget-card {
+        background: white; border: 1px solid #F0F0F0;
+        border-radius: 28px; padding: 30px;
+        display: flex; align-items: center; gap: 25px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        transition: transform 0.2s;
+    }
+    .widget-card:hover { transform: translateY(-5px); }
+
+    .icon-circle {
+        width: 65px; height: 65px; border-radius: 20px;
+        display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+        flex-shrink: 0;
+    }
+    .purple-bg { background: #F3F0FF; color: #8A6FE8; }
+    .orange-bg { background: #FFF7ED; color: #EA580C; }
+    .blue-bg { background: #EFF6FF; color: #3B82F6; }
+
+    .widget-text { display: flex; flex-direction: column; }
+    .widget-value { font-size: 2.2rem; font-weight: 900; line-height: 1; margin: 0; }
+    .widget-label { font-size: 0.9rem; font-weight: 600; color: #999; text-transform: uppercase; margin-top: 4px; }
+
+    /* --- 4. CONTENT SPLIT --- */
+    .content-split {
+        display: grid;
+        grid-template-columns: 2fr 1fr; /* 66% / 33% split */
+        gap: 40px;
+        flex-grow: 1;
+    }
+
+    /* Left Column: List */
+    .section-header {
         display: flex; justify-content: space-between; align-items: center;
-        min-height: 200px; cursor: pointer; margin-bottom: 30px;
+        margin-bottom: 25px;
     }
-    .hero-icon { background: white; color: black; width: 60px; height: 60px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+    .section-header h3 { font-size: 1.6rem; font-weight: 800; margin: 0; }
+    .view-link { color: #512BD4; font-weight: 700; text-decoration: none; font-size: 1rem; }
 
-    .stats-row { display: flex; gap: 20px; }
-    .stat-pill {
-        flex: 1; padding: 20px 30px; border-radius: 100px;
-        display: flex; align-items: center; gap: 20px;
-        border: 1px solid var(--border-color);
+    .entries-list { display: flex; flex-direction: column; gap: 20px; }
+
+    .entry-card {
+        background: white; border: 1px solid #F0F0F0;
+        border-radius: 24px; padding: 25px;
+        display: flex; align-items: center; gap: 25px;
+        cursor: pointer; transition: all 0.2s;
     }
-    .stat-pill h1 { font-weight: 900; font-size: 2.5rem; margin: 0; }
+    .entry-card:hover {
+        border-color: #512BD4;
+        box-shadow: 0 10px 30px rgba(81, 43, 212, 0.08);
+        transform: translateX(5px);
+    }
 
-    .activity-row {
-        padding: 15px 25px; border-radius: 50px;
-        display: flex; align-items: center; border: 1px solid var(--border-color);
+    .entry-date-box {
+        background: #FAFAFA; border: 1px solid #EEE;
+        border-radius: 16px; width: 70px; height: 70px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .d-day { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+    .d-month { font-size: 0.75rem; font-weight: 700; color: #999; text-transform: uppercase; }
+
+    .entry-details { flex: 1; overflow: hidden; }
+    .entry-title { font-weight: 800; font-size: 1.2rem; margin-bottom: 4px; color: #111; }
+    .entry-snippet { font-size: 1rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entry-mood { font-size: 1.6rem; }
+
+    /* Right Column: Visualizer */
+    .visualizer-column { display: flex; flex-direction: column; }
+
+    .mood-widget-card {
+        background: white; border: 1px solid #F0F0F0;
+        border-radius: 28px; padding: 30px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    }
+    .mood-header { display: flex; justify-content: space-between; align-items: center; }
+    .mood-header h3 { font-size: 1.2rem; font-weight: 800; margin: 0; }
+
+    .mood-dots-container {
+        display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .mood-dot-wrapper { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .mood-dot { width: 35px; height: 35px; border-radius: 50%; transition: transform 0.2s; }
+    .mood-dot-date { font-size: 0.65rem; color: #BBB; font-weight: 600; text-transform: uppercase; }
+
+    .dot-happy { background: #10B981; } /* Green */
+    .dot-neutral { background: #9CA3AF; } /* Gray */
+    .dot-sad { background: #EF4444; } /* Red */
+    .empty { background: #F3F4F6; }
+
+    .tip-card {
+        background: linear-gradient(135deg, #F3F0FF 0%, #E0D4FC 100%);
+        color: #512BD4;
+        padding: 25px; border-radius: 24px;
+        display: flex; gap: 15px; align-items: center;
+    }
+
+    .empty-placeholder {
+        text-align: center; padding: 40px; border: 2px dashed #E5E5E5; border-radius: 24px; color: #AAA; font-size: 1.1rem;
+    }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1200px) {
+        .content-split { grid-template-columns: 1fr; gap: 30px; }
+        .visualizer-column { flex-direction: row; gap: 20px; }
+        .mood-widget-card, .tip-card { flex: 1; }
+    }
+
+    @@media (max-width: 900px) {
+        .widgets-grid { grid-template-columns: 1fr; }
+        .dashboard-header { flex-direction: column; align-items: flex-start; gap: 20px; }
+        .visualizer-column { flex-direction: column; }
     }
 </style>

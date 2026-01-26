@@ -2,82 +2,262 @@
 @using JournalApp.Models
 @using JournalApp.Services
 @inject JournalService DbService
+@inject NavigationManager Nav
 
-<div style="max-width: 700px; margin: 0 auto; padding-top: 20px;">
+<div class="timeline-zen-container">
     
-    <!-- HEADER -->
-    <div class="mb-5">
-        <h2 class="fw-bold mb-4">Timeline</h2>
-        <div class="input-group">
-            <span class="input-group-text bg-white border-end-0 rounded-start-pill ps-3">
-                <i class="bi bi-search text-secondary"></i>
-            </span>
-            <input type="text" class="form-control border-start-0 py-2 rounded-end-pill shadow-none" 
-                   placeholder="Search memories..." 
-                   @bind="searchText" 
-                   @bind:after="FilterEntries" />
-        </div>
+    <!-- 1. HEADER TITLE -->
+    <div class="mb-4 text-center">
+        <h2 class="fw-bold display-5">Timeline</h2>
+        <p class="text-muted">Your journey, one entry at a time.</p>
     </div>
 
-    <!-- ENTRY LIST -->
-    <div class="d-flex flex-column gap-3">
-        @if (filteredEntries == null)
+    <!-- 2. UNIFIED TOOLBAR (Search + Filters) -->
+    <div class="unified-toolbar shadow-sm">
+        
+        <!-- SECTION A: SEARCH -->
+        <div class="toolbar-section search-section">
+            <i class="bi bi-search text-secondary ms-3"></i>
+            <input type="text" 
+                   class="toolbar-input" 
+                   placeholder="Search memories..." 
+                   value="@searchText"
+                   @oninput="HandleSearchInput" />
+        </div>
+
+        <div class="vertical-divider"></div>
+
+        <!-- SECTION B: MOODS -->
+        <div class="toolbar-section mood-section">
+            <button class="mood-btn @(selectedMood == null ? "active" : "")" @onclick="() => SetMood(null)" title="All">All</button>
+            <button class="mood-btn @(selectedMood == "Happy" ? "active" : "")" @onclick='() => SetMood("Happy")' title="Happy">😊</button>
+            <button class="mood-btn @(selectedMood == "Neutral" ? "active" : "")" @onclick='() => SetMood("Neutral")' title="Neutral">😐</button>
+            <button class="mood-btn @(selectedMood == "Sad" ? "active" : "")" @onclick='() => SetMood("Sad")' title="Sad">😔</button>
+        </div>
+
+        <div class="vertical-divider d-none d-md-block"></div>
+
+        <!-- SECTION C: DATES -->
+        <div class="toolbar-section date-section d-none d-md-flex">
+            <input type="date" class="date-mini-input" value="@(startDate?.ToString("yyyy-MM-dd"))" @onchange="HandleStartDateChange" title="Start Date"/>
+            <span class="text-muted small">to</span>
+            <input type="date" class="date-mini-input" value="@(endDate?.ToString("yyyy-MM-dd"))" @onchange="HandleEndDateChange" title="End Date"/>
+        </div>
+
+        <!-- SECTION D: RESET (Only visible if filtered) -->
+        @if (!string.IsNullOrEmpty(searchText) || !string.IsNullOrEmpty(selectedMood) || startDate.HasValue || endDate.HasValue)
         {
-            <p class="text-muted text-center">Loading...</p>
+            <button class="btn-reset" @onclick="ResetFilters" title="Clear Filters">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        }
+    </div>
+
+    <!-- 3. MAIN FEED -->
+    <div class="feed-container mt-5">
+        @if (isLoading)
+        {
+            <div class="text-center py-5 text-muted fs-5">Loading...</div>
         }
         else if (filteredEntries.Count == 0)
         {
-             <p class="text-muted text-center">No entries yet.</p>
+             <div class="empty-state">
+                 <i class="bi bi-filter text-muted fs-1 mb-3"></i>
+                 <p class="fs-5 fw-bold text-muted">No entries match your filters.</p>
+                 <button class="btn btn-dark rounded-pill px-4" @onclick="ResetFilters">Clear Filters</button>
+             </div>
         }
         else
         {
             @foreach (var entry in filteredEntries)
             {
-                <!-- THE STOIC CARD -->
-                <div class="card border-0 shadow-sm p-3 d-flex flex-row gap-3 align-items-start" style="border-radius: 16px; background: white;">
+                <div class="timeline-card fade-in-up" @onclick='() => Nav.NavigateTo($"journal?date={entry.EntryDate:yyyy-MM-dd}")'>
                     
-                    <!-- Date Box -->
-                    <div class="text-center pt-1" style="min-width: 50px;">
-                        <div class="fw-bold fs-5">@entry.EntryDate.Day</div>
-                        <div class="text-secondary small fw-bold">@entry.EntryDate.ToString("MMM").ToUpper()</div>
-                    </div>
-                    
-                    <!-- Content -->
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between mb-1">
-                            <h5 class="fw-bold mb-1 text-dark">
-                                @(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)
-                            </h5>
-                            @if (!string.IsNullOrEmpty(entry.PrimaryMood))
-                            {
-                                <span class="badge rounded-pill bg-light text-dark border">
-                                    @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐") @entry.PrimaryMood
-                                </span>
-                            }
-                        </div>
-                        <p class="text-secondary mb-0 text-truncate" style="max-width: 350px;">
-                            @(StripHtml(entry.Content ?? ""))
-                        </p>
-                        @if (!string.IsNullOrEmpty(entry.Tags))
-                        {
-                            <small class="text-muted mt-1 d-block opacity-75">@entry.Tags</small>
-                        }
+                    <!-- Date Badge -->
+                    <div class="card-date">
+                        <span class="d-day">@entry.EntryDate.Day</span>
+                        <span class="d-month">@entry.EntryDate.ToString("MMM")</span>
                     </div>
 
-                    <!-- Delete Button -->
-                    <button class="btn btn-sm text-danger opacity-25 hover-opacity-100" @onclick="() => DeleteEntry(entry)">
-                        <i class="bi bi-x-lg"></i>
+                    <!-- Content -->
+                    <div class="card-content">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h4 class="fw-bold mb-0 text-dark">@(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)</h4>
+                            <div class="mood-badge">
+                                @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐")
+                            </div>
+                        </div>
+                        
+                        <p class="text-secondary mb-2 text-truncate-2">@(StripHtml(entry.Content ?? ""))</p>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="tags-row">
+                                @if (!string.IsNullOrEmpty(entry.Tags))
+                                {
+                                    @foreach(var tag in entry.Tags.Split(','))
+                                    {
+                                        <span class="mini-tag">#@tag.Trim()</span>
+                                    }
+                                }
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">@entry.EntryDate.Year</small>
+                        </div>
+                    </div>
+
+                    <!-- Delete (ALWAYS VISIBLE NOW) -->
+                    <button class="delete-icon" @onclick:stopPropagation="true" @onclick="() => DeleteEntry(entry)">
+                        <i class="bi bi-trash3"></i>
                     </button>
                 </div>
             }
         }
     </div>
+
 </div>
 
+<style>
+    /* --- LAYOUT --- */
+    .timeline-zen-container {
+        max-width: 1200px; /* INCREASED WIDTH */
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    /* --- UNIFIED TOOLBAR --- */
+    .unified-toolbar {
+        max-width: 900px; /* Keep filter bar slightly smaller than cards for aesthetics, or set to 100% */
+        margin: 0 auto;
+        background: white;
+        border: 1px solid #E5E5E5;
+        border-radius: 50px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        transition: box-shadow 0.2s;
+    }
+    .unified-toolbar:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+
+    .toolbar-section { display: flex; align-items: center; height: 100%; }
+
+    /* Search Section */
+    .search-section { flex-grow: 1; min-width: 150px; }
+    .toolbar-input {
+        border: none; background: transparent; height: 100%; width: 100%;
+        padding-left: 10px; font-size: 1rem; outline: none; color: #333;
+    }
+    .toolbar-input::placeholder { color: #BBB; }
+
+    /* Divider */
+    .vertical-divider { width: 1px; height: 30px; background: #EEE; margin: 0 10px; }
+
+    /* Mood Section */
+    .mood-section { gap: 5px; }
+    .mood-btn {
+        background: transparent; border: none; border-radius: 50%;
+        width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; cursor: pointer; transition: background 0.2s; color: #555; font-weight: 600; font-size: 0.8rem;
+    }
+    .mood-btn:hover { background: #F5F5F5; }
+    .mood-btn.active { background: #1A1A1A; color: white; }
+
+    /* Date Section */
+    .date-section { gap: 8px; padding-right: 10px; }
+    .date-mini-input {
+        border: none; background: #F9F9F9; border-radius: 6px;
+        padding: 4px 8px; font-size: 0.8rem; color: #555; font-family: inherit; cursor: pointer;
+    }
+
+    /* Reset Button */
+    .btn-reset {
+        background: #FEE2E2; color: #DC2626; border: none;
+        width: 35px; height: 35px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin-left: 10px; cursor: pointer; flex-shrink: 0;
+    }
+    .btn-reset:hover { background: #FECACA; }
+
+
+    /* --- CARDS --- */
+    .feed-container { display: flex; flex-direction: column; gap: 20px; }
+
+    .timeline-card {
+        background: white; border: 1px solid #F0F0F0;
+        border-radius: 24px; padding: 25px;
+        display: flex; gap: 25px; align-items: flex-start;
+        cursor: pointer; position: relative;
+        transition: all 0.2s ease;
+    }
+    .timeline-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.06);
+        border-color: #E5E5E5;
+    }
+
+    .card-date {
+        background: #FAFAFA; border: 1px solid #EEE;
+        border-radius: 16px; width: 65px; height: 65px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .d-day { font-size: 1.4rem; font-weight: 800; line-height: 1; color: #1A1A1A; }
+    .d-month { font-size: 0.7rem; font-weight: 700; color: #AAA; text-transform: uppercase; }
+
+    .card-content { flex: 1; min-width: 0; }
+    
+    .text-truncate-2 {
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .mini-tag {
+        font-size: 0.75rem; color: #512BD4; background: #F3F0FF;
+        padding: 3px 10px; border-radius: 6px; font-weight: 600; margin-right: 5px;
+    }
+
+    .mood-badge { font-size: 1.4rem; line-height: 1; }
+
+    /* DELETE ICON UPDATED: Always Visible */
+    .delete-icon {
+        position: absolute; top: 20px; right: 20px;
+        background: transparent; border: none; 
+        color: #E5E5E5; /* Light grey by default so it's not distracting */
+        transition: color 0.2s; 
+        opacity: 1; /* Always visible */
+        font-size: 1.1rem;
+    }
+    .delete-icon:hover { color: #DC2626; } /* Red on hover */
+    .timeline-card:hover .delete-icon { color: #BBB; } /* Darker grey when card hovered */
+    .timeline-card:hover .delete-icon:hover { color: #DC2626; } /* Red when specifically hovered */
+
+    .empty-state {
+        text-align: center; padding: 60px 20px;
+        background: white; border-radius: 24px; border: 2px dashed #E5E5E5;
+    }
+
+    /* Animation */
+    .fade-in-up { opacity: 0; transform: translateY(10px); animation: fadeInUp 0.4s forwards; }
+    @@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+    @@media (max-width: 768px) {
+        .unified-toolbar { height: auto; flex-wrap: wrap; padding: 10px; border-radius: 20px; gap: 10px; }
+        .vertical-divider { display: none; }
+        .toolbar-section { width: 100%; justify-content: space-between; }
+        .search-section { border-bottom: 1px solid #EEE; padding-bottom: 10px; margin-bottom: 5px; }
+    }
+</style>
+
 @code {
+    [Inject] IJSRuntime JS { get; set; }
+
     private List<JournalEntry> allEntries = new();
     private List<JournalEntry> filteredEntries = new();
+    private bool isLoading = true;
+
+    // Filters
     private string searchText = "";
+    private string? selectedMood = null;
+    private DateTime? startDate = null;
+    private DateTime? endDate = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -86,29 +266,78 @@
 
     private async Task LoadData()
     {
+        isLoading = true;
         allEntries = await DbService.GetAllEntriesAsync();
-        filteredEntries = allEntries;
+        ApplyFilters();
+        isLoading = false;
     }
 
-    private void FilterEntries()
+    private void HandleSearchInput(ChangeEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(searchText)) 
+        searchText = e.Value?.ToString() ?? "";
+        ApplyFilters();
+    }
+
+    private void SetMood(string? mood)
+    {
+        selectedMood = mood;
+        ApplyFilters();
+    }
+
+    private void HandleStartDateChange(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out DateTime date)) startDate = date; else startDate = null;
+        ApplyFilters();
+    }
+
+    private void HandleEndDateChange(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out DateTime date)) endDate = date; else endDate = null;
+        ApplyFilters();
+    }
+
+    private void ResetFilters()
+    {
+        searchText = "";
+        selectedMood = null;
+        startDate = null;
+        endDate = null;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<JournalEntry> query = allEntries;
+
+        if (!string.IsNullOrWhiteSpace(searchText)) 
         {
-            filteredEntries = allEntries;
-        }
-        else 
-        {
-            filteredEntries = allEntries.Where(e => 
+            query = query.Where(e => 
                 (e.Title?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) || 
-                (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)
-            ).ToList();
+                (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (e.Tags?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)
+            );
         }
+
+        if (!string.IsNullOrEmpty(selectedMood))
+            query = query.Where(e => e.PrimaryMood == selectedMood);
+
+        if (startDate.HasValue)
+            query = query.Where(e => e.EntryDate.Date >= startDate.Value.Date);
+            
+        if (endDate.HasValue)
+            query = query.Where(e => e.EntryDate.Date <= endDate.Value.Date);
+
+        filteredEntries = query.ToList();
     }
 
     private async Task DeleteEntry(JournalEntry entry)
     {
-        await DbService.DeleteEntryAsync(entry);
-        await LoadData();
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this memory?");
+        if (confirmed)
+        {
+            await DbService.DeleteEntryAsync(entry);
+            await LoadData();
+        }
     }
 
     private string StripHtml(string input)
