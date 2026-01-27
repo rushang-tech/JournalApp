@@ -5,212 +5,133 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
-<!-- MAIN CONTAINER WITH SIDEBAR LAYOUT -->
 <div class="journal-screen-dock">
-    
-    <!-- 1. LEFT SIDEBAR: Previous Notes -->
-    <div class="journal-middle-list d-flex flex-column @(isSidebarOpen ? "" : "collapsed")">
-        <div class="journal-list-content d-flex flex-column h-100 overflow-auto">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="d-flex align-items-center gap-2">
-                    <h3 class="fw-bold m-0 text-dark">Entries</h3>
-                    
-                    <!-- COLLAPSE BUTTON -->
-                    <button class="btn btn-sm btn-link text-secondary p-0" 
-                            @onclick="ToggleSidebar" 
-                            title="Collapse Sidebar"
-                            style="text-decoration: none;">
-                        <i class="bi bi-layout-sidebar" style="font-size: 1.1rem;"></i>
-                    </button>
-                </div>
 
-                <div class="d-flex gap-2">
-                    <!-- SEARCH BUTTON -->
-                    <button class="btn btn-sm btn-outline-dark btn-add-entry" @onclick="OpenSearch" title="Search (Cmd+K)">
-                        <i class="bi bi-search" style="font-size: 0.9rem;"></i>
-                    </button>
-                    <!-- ADD BUTTON -->
-                    <button class="btn btn-sm btn-outline-dark btn-add-entry" @onclick="CreateNew" title="New Entry">
-                        <i class="bi bi-plus-lg"></i>
-                    </button>
+    <!-- 1. LEFT SIDEBAR: Entry List -->
+    <div class="journal-middle-list @(isSidebarOpen ? "" : "collapsed")">
+
+        <!-- Sidebar Header -->
+        <div class="sidebar-header">
+            <h3 class="sidebar-title">Entries</h3>
+            <div class="sidebar-actions">
+                <button class="icon-btn" @onclick="OpenSearch" title="Search">
+                    <i class="bi bi-search"></i>
+                </button>
+                <button class="icon-btn" @onclick="CreateNew" title="Today's Entry">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button class="icon-btn" @onclick="ToggleSidebar" title="Collapse">
+                    <i class="bi bi-layout-sidebar"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Entry List -->
+        <div class="entry-list-container">
+            @if(pastEntries != null)
+            {
+            @foreach(var entry in pastEntries)
+            {
+            bool isActive = entry.Id == currentEntry.Id && entry.Id != 0;
+
+            <div class="sidebar-entry-item @(isActive ? "active" : "")" @onclick="() => LoadEntry(entry)">
+                <div class="entry-item-title">
+                    @(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)
+                </div>
+                <div class="entry-item-meta">
+                    <span>@entry.EntryDate.ToString("MMM dd")</span>
+                    <span>@GetMoodEmoji(entry.PrimaryMood)</span>
                 </div>
             </div>
-
-            <div class="d-flex flex-column gap-2">
-                @if(pastEntries != null)
-                {
-                    @foreach(var entry in pastEntries)
-                    {
-                        bool isActive = entry.Id == currentEntry.Id && entry.Id != 0; // Only highlight if it's a saved entry
-                        
-                        <div class="p-3 rounded-4 cursor-pointer sidebar-entry-item @(isActive ? "active" : "inactive")"
-                             @onclick="() => LoadEntry(entry)">
-                            <div class="fw-bold text-truncate text-dark">@(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)</div>
-                            <div class="small opacity-75 d-flex justify-content-between text-secondary">
-                                <span>@entry.EntryDate.ToString("MMM dd")</span>
-                                <span>@(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "")</span>
-                            </div>
-                        </div>
-                    }
-                }
-            </div>
+            }
+            }
         </div>
     </div>
 
     <!-- 2. RIGHT AREA: Editor -->
-    <div class="journal-main-editor position-relative">
-        
-        <!-- EDITOR HEADER -->
-        <div class="d-flex justify-content-between align-items-center mb-5">
+    <div class="journal-main-editor">
+
+        <!-- Editor Header -->
+        <div class="editor-header">
             <div class="d-flex align-items-center gap-3">
-                <!-- EXPAND BUTTON -->
                 @if (!isSidebarOpen)
                 {
-                    <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center shadow-sm" 
-                            style="width: 35px; height: 35px;"
-                            @onclick="ToggleSidebar" 
-                            title="Show Entries">
-                        <i class="bi bi-layout-sidebar-inset text-secondary"></i>
-                    </button>
+                <button class="icon-btn" @onclick="ToggleSidebar" title="Open Sidebar">
+                    <i class="bi bi-layout-sidebar-inset"></i>
+                </button>
                 }
-
-                <div class="text-secondary small fw-bold text-uppercase letter-spacing-1">
+                <div class="date-display">
                     @currentEntry.EntryDate.ToString("MMMM dd • dddd").ToUpper()
                 </div>
             </div>
-            
-            <div class="d-flex gap-2 align-items-center">
+
+            <div class="editor-actions">
+
                 <!-- Mood Selection -->
-                <div class="d-flex gap-1 me-2 align-items-center">
-                    <span class="small text-muted me-2">Moods:</span>
-                    
-                    <!-- WRAPPER FOR MOOD BUTTONS TO APPLY SHAKE ANIMATION -->
-                    <div class="d-flex gap-1 p-1 rounded-pill @(triggerShake ? "shake-animation" : "")" style="transition: background-color 0.2s;">
+                <div class="mood-container">
+                    <div class="mood-selector @(triggerShake ? "shake-animation" : "")">
                         @foreach(var mood in moods)
                         {
-                            bool isPrimary = currentEntry.PrimaryMood == mood;
-                            
-                            <button class="btn btn-sm rounded-circle border d-flex align-items-center justify-content-center" 
-                                    style="@(isPrimary ? "background:#1A1A1A; color:white; border-color:#1A1A1A;" : "background:white; border-color:#E5E5E5;") width:35px; height:35px; transition:all 0.2s;"
-                                    @onclick="() => ToggleMood(mood)">
-                                @(mood == "Happy" ? "😊" : mood == "Neutral" ? "😐" : "😔")
-                            </button>
+                        bool isSelected = currentEntry.PrimaryMood == mood;
+                        <!-- ASYNC TOGGLE to save text state -->
+                        <button class="mood-btn @(isSelected ? "selected" : "")"
+                                @onclick="() => ToggleMood(mood)">
+                            @GetMoodEmoji(mood)
+                        </button>
                         }
                     </div>
-                </div>
-
-                <!-- DELETE BUTTON (Only shows if entry exists in DB) -->
-                @if(currentEntry.Id != 0)
-                {
-                    <button class="btn btn-outline-danger border-0 rounded-circle d-flex align-items-center justify-content-center me-2"
-                            style="width: 40px; height: 40px; transition: all 0.2s;"
-                            title="Delete this note"
-                            @onclick="DeleteCurrentEntry">
-                        <i class="bi bi-trash3" style="font-size: 1.1rem;"></i>
-                    </button>
-                }
-
-                <!-- Save Button Wrapper (Relative for absolute positioning of error text) -->
-                <div class="position-relative">
-                    <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveEntry">
-                        <i class="bi bi-check2 me-2"></i> Save
-                    </button>
-                    
-                    <!-- ERROR TEXT DISPLAY -->
                     @if (showMoodError)
                     {
-                        <div class="save-error-text">
-                            Please select an emoji first!
-                        </div>
+                    <div class="mood-error-popup">Select a mood!</div>
                     }
                 </div>
-            </div>
-        </div>
 
-        <!-- VISUAL EDITOR CANVAS -->
-        <div class="flex-grow-1 mx-auto w-100" 
-             style="max-width: @(isSidebarOpen ? "900px" : "1200px"); transition: max-width 0.4s ease; overflow-y: auto; padding-bottom: 80px;">
-            
-            @if (!isPreview)
-            {
-                <!-- Edit Mode -->
-                <input type="text" 
-                       class="w-100 border-0 bg-transparent fw-bold display-6 mb-4 zen-input text-dark" 
-                       placeholder="Title your day..." 
-                       @bind="currentEntry.Title" />
-                
-                <div id="richEditor"
-                     class="rich-text-editor w-100" 
-                     contenteditable="true"
-                     placeholder="Start writing..." 
-                     spellcheck="false">
-                </div>
-                          
-                <input type="text" 
-                       class="w-100 border-0 bg-transparent text-secondary mt-5 zen-input" 
-                       style="font-size: 0.9rem;"
-                       placeholder="#AddTags..." 
-                       @bind="currentEntry.Tags" />
-            }
-            else
-            {
-                <!-- Preview Mode -->
-                <div class="p-4 bg-white border rounded shadow-sm overflow-auto" style="height: 70vh; border-radius: 16px;">
-                    <h1 class="fw-bold text-dark">@currentEntry.Title</h1>
-                    <hr />
-                    <div class="mt-3 fs-5 text-dark" style="white-space: pre-wrap; line-height: 1.8;">
-                        @((MarkupString)(currentEntry.Content ?? ""))
-                    </div>
-                    <div class="mt-4">
-                        @if(!string.IsNullOrEmpty(currentEntry.Tags))
-                        {
-                            @foreach(var tag in currentEntry.Tags.Split(','))
-                            {
-                                <span class="badge bg-secondary me-1">#@tag.Trim()</span>
-                            }
-                        }
-                    </div>
-                </div>
-            }
-        </div>
+                <!-- Delete Button -->
+                @if(currentEntry.Id != 0)
+                {
+                <button class="icon-btn danger" @onclick="DeleteCurrentEntry" title="Delete">
+                    <i class="bi bi-trash3"></i>
+                </button>
+                }
 
-        <!-- FLOATING TOOLBAR -->
-        @if (!isPreview)
-        {
-            <div class="position-absolute bottom-0 start-50 translate-middle-x pb-4 mb-2">
-                <div class="d-flex align-items-center gap-4 px-4 py-2 rounded-pill shadow-sm bg-white border">
-                    <i class="bi bi-type-bold text-dark cursor-pointer p-2" 
-                       onmousedown="event.preventDefault();"
-                       onclick="editorUtils.execCmd('bold');" 
-                       title="Bold"></i>
-                    
-                    <i class="bi bi-type-italic text-secondary cursor-pointer p-2" 
-                       onmousedown="event.preventDefault();"
-                       onclick="editorUtils.execCmd('italic');" 
-                       title="Italic"></i>
-                    
-                    <i class="bi bi-type-underline text-secondary cursor-pointer p-2" 
-                       onmousedown="event.preventDefault();"
-                       onclick="editorUtils.execCmd('underline');" 
-                       title="Underline"></i>
-                    
-                    <div class="vr"></div>
-                    
-                    <button class="btn btn-link btn-sm text-decoration-none text-dark p-0 fw-bold" @onclick="TogglePreview">
-                        PREVIEW
-                    </button>
-                </div>
-            </div>
-        }
-        else
-        {
-            <div class="position-absolute bottom-0 start-50 translate-middle-x pb-4 mb-2">
-                <button class="btn btn-dark rounded-pill px-4" @onclick="TogglePreview">
-                    BACK TO EDIT
+                <!-- Save Button -->
+                <button class="save-btn" @onclick="SaveEntry">
+                    <i class="bi bi-check2"></i> Save
                 </button>
             </div>
-        }
+        </div>
+
+        <!-- Editor Canvas -->
+        <!-- Added 'expanded' class logic here based on sidebar state -->
+        <div class="editor-canvas @(isSidebarOpen ? "" : "expanded")">
+            <!-- Title Input -->
+            <input type="text"
+                   class="title-input"
+                   placeholder="Title your day..."
+                   @bind="currentEntry.Title" />
+
+            <!-- Rich Text Editor: Fills remaining space -->
+            <div id="richEditor"
+                 class="rich-text-editor"
+                 contenteditable="true"
+                 placeholder="Start writing..."
+                 spellcheck="false">
+            </div>
+
+            <!-- Tags Input -->
+            <input type="text"
+                   class="tags-input"
+                   placeholder="#AddTags (e.g. #Work, #Gratitude)..."
+                   @bind="currentEntry.Tags" />
+        </div>
+
+        <!-- Formatting Toolbar -->
+        <div class="formatting-toolbar">
+            <button class="format-btn" onmousedown="event.preventDefault();" onclick="editorUtils.execCmd('bold')" title="Bold"><i class="bi bi-type-bold"></i></button>
+            <button class="format-btn" onmousedown="event.preventDefault();" onclick="editorUtils.execCmd('italic')" title="Italic"><i class="bi bi-type-italic"></i></button>
+            <button class="format-btn" onmousedown="event.preventDefault();" onclick="editorUtils.execCmd('underline')" title="Underline"><i class="bi bi-type-underline"></i></button>
+            <button class="format-btn" onmousedown="event.preventDefault();" onclick="editorUtils.execCmd('insertUnorderedList')" title="Bullet List"><i class="bi bi-list-ul"></i></button>
+        </div>
     </div>
 </div>
 
@@ -219,273 +140,431 @@
     <div class="spotlight-container" @onclick:stopPropagation>
         <div class="spotlight-bar">
             <i class="bi bi-search"></i>
-            <input @ref="searchInput" 
-                   class="spotlight-input" 
-                   value="@searchQuery" 
+            <input @ref="searchInput"
+                   class="spotlight-input"
+                   value="@searchQuery"
                    @oninput="HandleSearchInput"
-                   placeholder="Search your thoughts..." 
+                   placeholder="Search your thoughts..."
                    autofocus />
         </div>
         <div class="spotlight-results">
-            @if(searchResults != null && searchResults.Any())
+            @if(searchResults.Any())
             {
-                @foreach(var res in searchResults)
-                {
-                    <div class="spotlight-item" @onclick="() => SelectSearchResult(res)">
-                        <div>
-                            <div class="fw-bold text-dark">@(string.IsNullOrEmpty(res.Title) ? "Untitled" : res.Title)</div>
-                            <small class="text-muted">@res.EntryDate.ToString("MMM dd, yyyy")</small>
-                        </div>
-                        <div class="text-secondary small">
-                            <i class="bi bi-arrow-return-left"></i>
-                        </div>
-                    </div>
-                }
+            @foreach(var res in searchResults)
+            {
+            <div class="spotlight-item" @onclick="() => SelectSearchResult(res)">
+                <div>
+                    <div class="fw-bold">@(string.IsNullOrEmpty(res.Title) ? "Untitled" : res.Title)</div>
+                    <small class="opacity-75">@res.EntryDate.ToString("MMM dd, yyyy")</small>
+                </div>
+                <i class="bi bi-arrow-return-left"></i>
+            </div>
             }
-            else if (!string.IsNullOrEmpty(searchQuery))
-            {
-                <div class="p-3 text-muted text-center small">No matches found.</div>
             }
         </div>
     </div>
 </div>
 
-<style>
-    .zen-input { 
-        outline: none !important; 
-        box-shadow: none !important;
-        background-color: transparent !important;
-    }
-    .zen-input::placeholder { color: #ccc; }
-    .cursor-pointer { cursor: pointer; }
-    .letter-spacing-1 { letter-spacing: 1px; }
-    .transition-base { transition: all 0.2s ease; }
-    
-    .journal-list-content::-webkit-scrollbar { width: 5px; }
-    .journal-list-content::-webkit-scrollbar-thumb { background: #bbb; border-radius: 10px; }
-    
-    .bi-type-bold:hover, .bi-type-italic:hover, .bi-type-underline:hover {
-        background-color: #f0f0f0;
-        border-radius: 5px;
-    }
-</style>
-
 @code {
-    [SupplyParameterFromQuery]
-    public string? Date { get; set; }
+[SupplyParameterFromQuery] public string? Date { get; set; }
 
-    private JournalEntry currentEntry = new JournalEntry { EntryDate = DateTime.Now };
-    private List<JournalEntry> pastEntries = new();
-    private string[] moods = { "Happy", "Neutral", "Sad" };
-    private bool isPreview = false;
-    private bool isSidebarOpen = true; 
-    private bool shouldRenderEditorContent = true;
+private JournalEntry currentEntry = new JournalEntry { EntryDate = DateTime.Now };
+private List<JournalEntry> pastEntries = new();
+private string[] moods = { "Happy", "Neutral", "Sad" };
+private bool isSidebarOpen = true;
 
-    // --- SEARCH STATE ---
-    private bool showSearch = false;
-    private string searchQuery = "";
-    private List<JournalEntry> searchResults = new();
-    private ElementReference searchInput;
+// Validation State
+private bool triggerShake = false;
+private bool showMoodError = false;
 
-    // --- VALIDATION STATE ---
-    private bool triggerShake = false;
-    private bool showMoodError = false;
+// Search State
+private bool showSearch = false;
+private string searchQuery = "";
+private List<JournalEntry> searchResults = new();
+private ElementReference searchInput;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadList();
-        
-        if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out DateTime parsedDate))
-        {
-            await LoadEntryByDate(parsedDate);
-        }
-        else
-        {
-            CreateNew(); 
-        }
-    }
+protected override async Task OnInitializedAsync()
+{
+await LoadList();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (shouldRenderEditorContent && !isPreview)
-        {
-            await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
-            shouldRenderEditorContent = false;
-        }
-        
-        if (showSearch)
-        {
-            await searchInput.FocusAsync();
-        }
-    }
-
-    private void ToggleSidebar()
-    {
-        isSidebarOpen = !isSidebarOpen;
-    }
-
-    // --- SEARCH LOGIC ---
-    private void OpenSearch()
-    {
-        searchQuery = "";
-        searchResults.Clear();
-        showSearch = true;
-        StateHasChanged();
-    }
-
-    private void CloseSearch()
-    {
-        showSearch = false;
-    }
-
-    private void HandleSearchInput(ChangeEventArgs e)
-    {
-        searchQuery = e.Value?.ToString() ?? "";
-        if (string.IsNullOrWhiteSpace(searchQuery))
-        {
-            searchResults.Clear();
-        }
-        else
-        {
-            searchResults = pastEntries
-                .Where(x => (x.Title?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false) || 
-                            (x.Content?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false))
-                .Take(5)
-                .ToList();
-        }
-    }
-
-    private async Task SelectSearchResult(JournalEntry entry)
-    {
-        await LoadEntry(entry);
-        CloseSearch();
-    }
-
-    // --- EXISTING LOGIC ---
-
-    private async Task LoadList()
-    {
-        pastEntries = await DbService.GetAllEntriesAsync();
-    }
-
-    private async Task LoadEntryByDate(DateTime date)
-    {
-        var existing = await DbService.GetEntryByDateAsync(date);
-        if (existing != null) 
-        {
-            currentEntry = existing;
-        }
-        else 
-        {
-            currentEntry = new JournalEntry { EntryDate = date };
-        }
-        
-        ResetValidation();
-        shouldRenderEditorContent = true; 
-        StateHasChanged();
-    }
-
-    private async Task LoadEntry(JournalEntry entry)
-    {
-        currentEntry = entry;
-        ResetValidation();
-        isPreview = false;
-        shouldRenderEditorContent = true;
-        StateHasChanged();
-    }
-
-    private void CreateNew()
-    {
-        currentEntry = new JournalEntry { EntryDate = DateTime.Now };
-        ResetValidation();
-        isPreview = false;
-        shouldRenderEditorContent = true;
-        StateHasChanged();
-    }
-
-    private void ResetValidation()
-    {
-        showMoodError = false;
-        triggerShake = false;
-    }
-
-    private async Task TogglePreview()
-    {
-        if (!isPreview)
-        {
-            string htmlContent = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
-            currentEntry.Content = htmlContent;
-        }
-        
-        isPreview = !isPreview;
-        shouldRenderEditorContent = true;
-    }
-
-    private void ToggleMood(string mood)
-    {
-        ResetValidation();
-
-        // Strict Single Selection Logic
-        if (currentEntry.PrimaryMood == mood)
-        {
-            currentEntry.PrimaryMood = string.Empty;
-        }
-        else
-        {
-            currentEntry.PrimaryMood = mood;
-        }
-        currentEntry.SecondaryMoods = string.Empty;
-    }
-
-    private async Task SaveEntry()
-    {
-        if (string.IsNullOrEmpty(currentEntry.PrimaryMood))
-        {
-            triggerShake = true;
-            showMoodError = true;
-            StateHasChanged();
-
-            await Task.Delay(500); 
-            triggerShake = false;
-            StateHasChanged();
-            return;
-        }
-
-        try 
-        {
-            string htmlContent = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
-            currentEntry.Content = htmlContent;
-
-            await DbService.SaveEntryAsync(currentEntry);
-            
-            await LoadList();
-            await JS.InvokeVoidAsync("alert", "Journal saved successfully!");
-        }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("alert", "Error saving: " + ex.Message);
-        }
-    }
-
-    // --- DELETE LOGIC ---
-    private async Task DeleteCurrentEntry()
-    {
-        if (currentEntry.Id == 0) return;
-
-        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this note? This cannot be undone.");
-        if (confirmed)
-        {
-            try 
-            {
-                await DbService.DeleteEntryAsync(currentEntry);
-                await LoadList();
-                CreateNew(); // Reset UI to a fresh note
-                await JS.InvokeVoidAsync("alert", "Note deleted.");
-            }
-            catch (Exception ex)
-            {
-                await JS.InvokeVoidAsync("alert", "Error deleting: " + ex.Message);
-            }
-        }
-    }
+if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out DateTime parsedDate))
+{
+await LoadEntryByDate(parsedDate);
 }
+else
+{
+await CreateNew();
+}
+}
+
+protected override async Task OnAfterRenderAsync(bool firstRender)
+{
+if (firstRender)
+{
+await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
+}
+if (showSearch) await searchInput.FocusAsync();
+}
+
+private async Task LoadList() => pastEntries = await DbService.GetAllEntriesAsync();
+
+private async Task LoadEntryByDate(DateTime date)
+{
+if(currentEntry.Id != 0) await SaveEntryWithoutValidation();
+
+var existing = await DbService.GetEntryByDateAsync(date);
+
+currentEntry = existing ?? new JournalEntry { EntryDate = date };
+
+await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
+ResetValidation();
+}
+
+private async Task LoadEntry(JournalEntry entry)
+{
+if(currentEntry.Id != 0) await SaveEntryWithoutValidation();
+
+currentEntry = entry;
+await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
+ResetValidation();
+}
+
+// --- ONE ENTRY PER DAY LOGIC ---
+private async Task CreateNew()
+{
+var today = DateTime.Today;
+var existingToday = await DbService.GetEntryByDateAsync(today);
+
+if (existingToday != null)
+{
+currentEntry = existingToday;
+}
+else
+{
+currentEntry = new JournalEntry { EntryDate = DateTime.Now };
+}
+
+await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content ?? "");
+ResetValidation();
+}
+
+private void ResetValidation()
+{
+triggerShake = false;
+showMoodError = false;
+}
+
+private void ToggleSidebar() => isSidebarOpen = !isSidebarOpen;
+
+// --- TEXT STATE PRESERVATION FIX ---
+private async Task ToggleMood(string mood)
+{
+string currentHtml = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
+currentEntry.Content = currentHtml;
+
+if (currentEntry.PrimaryMood == mood)
+{
+currentEntry.PrimaryMood = "";
+}
+else
+{
+currentEntry.PrimaryMood = mood;
+ResetValidation();
+}
+
+StateHasChanged();
+}
+
+private string GetMoodEmoji(string? mood) => mood switch { "Happy" => "😊", "Sad" => "😔", "Neutral" => "😐", _ => "" };
+
+private async Task SaveTextState()
+{
+currentEntry.Content = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
+}
+
+private async Task SaveEntry()
+{
+if (string.IsNullOrEmpty(currentEntry.PrimaryMood))
+{
+triggerShake = true;
+showMoodError = true;
+StateHasChanged();
+await Task.Delay(500);
+triggerShake = false;
+StateHasChanged();
+return;
+}
+
+await SaveEntryWithoutValidation();
+await JS.InvokeVoidAsync("alert", "Saved successfully!");
+}
+
+private async Task SaveEntryWithoutValidation()
+{
+currentEntry.Content = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
+await DbService.SaveEntryAsync(currentEntry);
+await LoadList();
+}
+
+private async Task DeleteCurrentEntry()
+{
+if (currentEntry.Id == 0) return;
+bool confirmed = await JS.InvokeAsync<bool>("confirm", "Delete this entry?");
+if (confirmed)
+{
+await DbService.DeleteEntryAsync(currentEntry);
+await LoadList();
+await CreateNew();
+}
+}
+
+// Search Logic
+private void OpenSearch() { searchQuery = ""; searchResults.Clear(); showSearch = true; }
+private void CloseSearch() => showSearch = false;
+private void HandleSearchInput(ChangeEventArgs e)
+{
+searchQuery = e.Value?.ToString() ?? "";
+if (!string.IsNullOrWhiteSpace(searchQuery))
+{
+searchResults = pastEntries.Where(x => (x.Title?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false) || (x.Content?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false)).Take(5).ToList();
+}
+}
+private async Task SelectSearchResult(JournalEntry entry) { await LoadEntry(entry); CloseSearch(); }
+}
+
+<style>
+    /* --- FIXED LAYOUT STRUCTURE --- */
+    .journal-screen-dock {
+        display: flex;
+        flex-direction: row;
+        height: 100vh;
+        width: 100%;
+        overflow: hidden;
+        background-color: var(--bg-primary);
+        position: relative;
+    }
+
+    /* --- SIDEBAR --- */
+    .journal-middle-list {
+        width: 300px;
+        background-color: var(--bg-secondary);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        padding: 25px;
+        transition: width 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+        flex-shrink: 0;
+        z-index: 5;
+    }
+
+    .journal-middle-list.collapsed {
+        width: 0; padding: 25px 0; opacity: 0; border: none; overflow: hidden;
+    }
+
+    .sidebar-header {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+    }
+    .sidebar-title {
+        font-size: 1.5rem; font-weight: 800; margin: 0; color: var(--text-primary);
+    }
+    .sidebar-actions { display: flex; gap: 8px; }
+
+    .icon-btn {
+        background: transparent; border: 1px solid var(--border-color);
+        color: var(--text-secondary); border-radius: 50%;
+        width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .icon-btn:hover { background-color: var(--hover-bg); color: var(--text-primary); }
+    .icon-btn.danger:hover { background-color: #fee2e2; color: #dc2626; border-color: #fee2e2; }
+
+    .entry-list-container {
+        flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .sidebar-entry-item {
+        padding: 16px; border-radius: 16px; cursor: pointer;
+        background-color: transparent; border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+    .sidebar-entry-item:hover { background-color: var(--hover-bg); }
+    .sidebar-entry-item.active {
+        background-color: var(--bg-tertiary);
+        border-color: var(--border-color);
+    }
+
+    .entry-item-title { font-weight: 700; color: var(--text-primary); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entry-item-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); }
+
+    /* --- EDITOR AREA (Fixed Height Logic) --- */
+    .journal-main-editor {
+        flex: 1;
+        background-color: var(--bg-primary);
+        display: flex; flex-direction: column;
+        position: relative;
+        height: 100vh; /* Force full height */
+        overflow: hidden;
+    }
+
+    .editor-header {
+        padding: 25px 40px;
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid transparent;
+        flex-shrink: 0;
+    }
+
+    .date-display {
+        font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); letter-spacing: 1px;
+    }
+
+    .editor-actions { display: flex; align-items: center; gap: 15px; }
+
+    /* --- CANVAS & INPUTS (Dynamic Expansion) --- */
+    .editor-canvas {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 20px 80px 80px 80px;
+        overflow-y: auto;
+
+        /* STANDARD WIDTH */
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto;
+
+        transition: max-width 0.4s ease, padding 0.4s ease;
+    }
+
+    /* EXPANDED STATE (Triggered when sidebar collapsed) */
+    .editor-canvas.expanded {
+        max-width: 1600px; /* Expands to fill screen */
+    }
+
+    .title-input {
+        width: 100%; border: none; background: transparent;
+        font-size: 3rem; font-weight: 900; color: var(--text-primary);
+        margin-bottom: 30px; outline: none;
+        flex-shrink: 0;
+    }
+    .title-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+    /* EDITOR SIZE */
+    .rich-text-editor {
+        width: 100%;
+        flex-grow: 1; /* Stretch to fill vertical void */
+        min-height: 500px;
+        outline: none;
+        font-size: 1.25rem; line-height: 1.8; color: var(--text-primary);
+        white-space: pre-wrap;
+    }
+
+    .rich-text-editor:empty:before {
+        content: attr(placeholder); color: var(--text-muted); display: block;
+    }
+
+    .rich-text-editor ul { padding-left: 20px; margin-bottom: 10px; }
+    .rich-text-editor li { margin-bottom: 5px; }
+
+    .tags-input {
+        width: 100%; border: none; background: transparent;
+        margin-top: 40px; color: var(--text-secondary); font-size: 1rem;
+        flex-shrink: 0;
+        padding-bottom: 40px;
+    }
+
+    /* --- MOOD & TOOLBAR STYLES --- */
+    .mood-container { position: relative; }
+
+    .mood-selector {
+        display: flex; gap: 5px; background: var(--bg-secondary);
+        padding: 4px; border-radius: 50px; border: 1px solid var(--border-color);
+    }
+
+    .shake-animation {
+        animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        border-color: #dc3545 !important;
+    }
+
+    @@keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    .mood-error-popup {
+        position: absolute; top: 45px; right: 0;
+        background-color: #dc3545; color: white;
+        font-size: 0.75rem; font-weight: 700;
+        padding: 4px 10px; border-radius: 6px;
+        white-space: nowrap; animation: fadeIn 0.2s;
+        z-index: 10;
+    }
+    .mood-error-popup::before {
+        content: ""; position: absolute; top: -4px; right: 20px;
+        width: 8px; height: 8px; background-color: #dc3545;
+        transform: rotate(45deg);
+    }
+
+    .mood-btn {
+        background: transparent; border: none; width: 32px; height: 32px; border-radius: 50%;
+        cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s;
+    }
+    .mood-btn:hover { background-color: var(--hover-bg); transform: scale(1.1); }
+    .mood-btn.selected { background-color: var(--accent-color); color: var(--accent-text); transform: scale(1.1); }
+
+    .save-btn {
+        background-color: var(--text-primary); color: var(--bg-primary);
+        border: none; padding: 8px 24px; border-radius: 50px;
+        font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .save-btn:hover { opacity: 0.9; }
+
+    /* --- FLOATING TOOLBAR --- */
+    .formatting-toolbar {
+        position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background-color: var(--bg-secondary); border: 1px solid var(--border-color);
+        padding: 10px 20px; border-radius: 50px; display: flex; gap: 20px;
+        box-shadow: 0 5px 20px var(--shadow-color);
+        z-index: 10;
+    }
+    .format-btn {
+        background: none; border: none; color: var(--text-primary);
+        font-size: 1.2rem; cursor: pointer; transition: color 0.2s;
+    }
+    .format-btn:hover { color: #512BD4; }
+
+    /* --- SEARCH OVERLAY --- */
+    .spotlight-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+        z-index: 100; display: flex; justify-content: center; padding-top: 15vh;
+        opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .spotlight-overlay.visible { opacity: 1; pointer-events: auto; }
+
+    .spotlight-container {
+        width: 600px; background: var(--bg-secondary);
+        border-radius: 16px; overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid var(--border-color);
+        display: flex; flex-direction: column; max-height: 400px;
+    }
+    .spotlight-bar {
+        display: flex; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color);
+    }
+    .spotlight-bar i { font-size: 1.5rem; color: var(--text-muted); margin-right: 15px; }
+    .spotlight-input {
+        flex: 1; background: transparent; border: none; font-size: 1.5rem; color: var(--text-primary);
+    }
+    .spotlight-results { overflow-y: auto; padding: 10px; }
+    .spotlight-item {
+        padding: 15px; display: flex; justify-content: space-between; align-items: center;
+        border-radius: 10px; cursor: pointer; color: var(--text-primary);
+    }
+    .spotlight-item:hover { background-color: var(--hover-bg); }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+</style>

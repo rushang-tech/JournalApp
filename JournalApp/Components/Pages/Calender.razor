@@ -3,7 +3,9 @@
 @using JournalApp.Services
 @using JournalApp.Models
 @inject JournalService DbService
+@inject ThemeService Theme
 @inject NavigationManager Nav
+@implements IDisposable
 
 <div class="calendar-wrapper">
     
@@ -29,7 +31,7 @@
         <!-- Days Grid -->
         <div class="days-grid">
             
-            <!-- Empty slots for padding (e.g. if month starts on Wednesday) -->
+            <!-- Empty slots for padding -->
             @for (int i = 0; i < StartOffset; i++)
             {
                 <div class="day-cell empty"></div>
@@ -38,13 +40,8 @@
             <!-- Real Days -->
             @for (int day = 1; day <= DaysInMonth; day++)
             {
-                // Capture the date for this cell
                 DateTime cellDate = new DateTime(CurrentDate.Year, CurrentDate.Month, day);
-                
-                // Check if user has written on this day
                 bool hasEntry = EntryDates.Contains(cellDate.Date);
-                
-                // Check if this cell is Today
                 bool isToday = cellDate.Date == DateTime.Today;
 
                 <div class="day-cell @(isToday ? "today" : "")" @onclick="() => OpenEntry(cellDate)">
@@ -64,26 +61,28 @@
     private DateTime CurrentDate = DateTime.Today;
     private int DaysInMonth;
     private int StartOffset;
-    private HashSet<DateTime> EntryDates = new HashSet<DateTime>(); // Fast lookup for dots
+    private HashSet<DateTime> EntryDates = new HashSet<DateTime>();
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to theme changes so dots/colors update instantly
+        Theme.OnThemeChanged += StateHasChanged;
         await LoadMonthData();
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe when leaving page
+        Theme.OnThemeChanged -= StateHasChanged;
     }
 
     private async Task LoadMonthData()
     {
-        // 1. Calculate Grid Math
         DaysInMonth = DateTime.DaysInMonth(CurrentDate.Year, CurrentDate.Month);
         var firstDay = new DateTime(CurrentDate.Year, CurrentDate.Month, 1);
-        StartOffset = (int)firstDay.DayOfWeek; // 0 = Sunday, 1 = Monday...
+        StartOffset = (int)firstDay.DayOfWeek;
 
-        // 2. Get Data for Dots
-        // We get ALL entries, then filter locally. 
-        // (For a massive app, you'd filter in SQL, but for this assignment, this is fine).
         var allEntries = await DbService.GetAllEntriesAsync();
-        
-        // Store just the dates that have entries
         EntryDates = allEntries.Select(e => e.EntryDate.Date).ToHashSet();
     }
 
@@ -101,8 +100,7 @@
 
     private void OpenEntry(DateTime date)
     {
-        // Navigate to Journal page with the specific date query
-        // Format: /journal?date=2026-01-24
+        // Navigation logic: Takes user to the journal entry for this specific date
         string dateString = date.ToString("yyyy-MM-dd");
         Nav.NavigateTo($"journal?date={dateString}");
     }
@@ -113,7 +111,8 @@
         padding: 40px;
         max-width: 900px;
         margin: 0 auto;
-        color: #1A1A1A;
+        /* Use theme variable for text */
+        color: var(--text-primary);
         font-family: 'Poppins', sans-serif;
     }
 
@@ -124,27 +123,27 @@
         align-items: center;
         margin-bottom: 30px;
     }
-    .page-title { font-weight: 800; font-size: 2.5rem; margin: 0; }
+    .page-title { font-weight: 800; font-size: 2.5rem; margin: 0; color: var(--text-primary); }
 
     .month-selector {
-        background: white;
+        background: var(--bg-secondary);
         padding: 10px 20px;
         border-radius: 50px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 15px var(--shadow-color);
         display: flex; align-items: center; gap: 20px;
-        border: 1px solid #EEE;
+        border: 1px solid var(--border-color);
     }
-    .current-month { font-weight: 700; font-size: 1.1rem; min-width: 140px; text-align: center; }
-    .nav-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #1A1A1A; }
-    .nav-btn:hover { color: #888; }
+    .current-month { font-weight: 700; font-size: 1.1rem; min-width: 140px; text-align: center; color: var(--text-primary); }
+    .nav-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-primary); }
+    .nav-btn:hover { opacity: 0.6; }
 
     /* The Calendar Card */
     .calendar-card {
-        background: white;
+        background: var(--bg-secondary);
         border-radius: 24px;
         padding: 40px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.05);
-        border: 1px solid #F0F0F0;
+        box-shadow: 0 10px 40px var(--shadow-color);
+        border: 1px solid var(--border-color);
     }
 
     /* Headers (Su, Mo, Tu...) */
@@ -153,13 +152,13 @@
         grid-template-columns: repeat(7, 1fr);
         text-align: center;
         margin-bottom: 20px;
-        border-bottom: 1px solid #F5F5F5;
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 15px;
     }
     .days-header span {
         font-size: 0.8rem;
         font-weight: 700;
-        color: #999;
+        color: var(--text-muted);
         letter-spacing: 1px;
     }
 
@@ -173,7 +172,7 @@
 
     /* Day Cell */
     .day-cell {
-        height: 80px; /* Big touch targets */
+        height: 80px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -182,26 +181,29 @@
         cursor: pointer;
         transition: all 0.2s;
         position: relative;
+        color: var(--text-primary);
     }
-    .day-cell:hover { background-color: #F9F9F9; }
+    .day-cell:hover { background-color: var(--hover-bg); }
     
-    .day-number { font-size: 1.2rem; font-weight: 600; color: #333; }
+    .day-number { font-size: 1.2rem; font-weight: 600; }
     
     /* Today Styling */
     .day-cell.today {
-        background-color: #1A1A1A;
-        color: white;
+        background-color: var(--accent-color);
+        color: var(--accent-text);
     }
-    .day-cell.today .day-number { color: white; }
 
-    /* The Dot (Entry Indicator) */
+    /* The Dot (Entry Indicator) - FIXED for Dark Mode */
     .dot {
-        width: 6px; height: 6px;
-        background-color: #1A1A1A; /* Black dot */
+        width: 7px; height: 7px;
+        /* Dot will be black in light mode, white in dark mode */
+        background-color: var(--text-primary); 
         border-radius: 50%;
         margin-top: 6px;
+        transition: transform 0.2s ease;
     }
-    .day-cell.today .dot { background-color: white; } /* White dot on black bg */
+    .day-cell:hover .dot { transform: scale(1.3); }
+    .day-cell.today .dot { background-color: var(--accent-text); } 
 
     .day-cell.empty { cursor: default; pointer-events: none; }
 </style>

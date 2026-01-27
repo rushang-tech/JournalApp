@@ -1,31 +1,83 @@
 @page "/export"
 @using JournalApp.Services
+@using JournalApp.Models
 @using Microsoft.Maui.ApplicationModel
 @using Microsoft.Maui.Storage
 @inject JournalService DbService
 @inject IJSRuntime JS
 
-<div class="container-fluid p-4">
-    <h2 class="fw-bold mb-4">Export Journals</h2>
+<div class="export-container fade-in">
     
-    <div class="stoic-card p-4 border rounded shadow-sm bg-white" style="max-width: 600px;">
-        <p class="text-muted mb-4">Select date range to export PDF.</p>
+    <!-- HEADER -->
+    <div class="header-section mb-5">
+        <h2 class="page-title">Export Journal</h2>
+        <p class="text-secondary">Transform your digital memories into a keepsake PDF.</p>
+    </div>
+
+    <div class="export-grid">
         
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label small fw-bold">START DATE</label>
-                <input type="date" class="form-control" @bind="startDate" />
+        <!-- COLUMN 1: VISUAL PREVIEW -->
+        <div class="visual-card">
+            <div class="pdf-icon-wrapper floating-anim">
+                <i class="bi bi-file-earmark-pdf-fill"></i>
+                <div class="pdf-badge">PDF</div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label small fw-bold">END DATE</label>
-                <input type="date" class="form-control" @bind="endDate" />
+            
+            <div class="visual-text">
+                <h4 class="fw-bold">Your Archive</h4>
+                @if (isLoadingCount)
+                {
+                    <p class="text-muted small">Checking records...</p>
+                }
+                else
+                {
+                    <p class="text-muted small">
+                        <span class="count-badge">@entryCount</span> memories found in this range.
+                    </p>
+                }
             </div>
         </div>
 
-        <button class="btn btn-dark w-100 mt-4 py-3 fw-bold rounded-pill" @onclick="GenerateExport">
-            @if (isGenerating) { <span>Processing...</span> }
-            else { <span><i class="bi bi-file-earmark-pdf me-2"></i> EXPORT PDF</span> }
-        </button>
+        <!-- COLUMN 2: CONTROLS -->
+        <div class="controls-card">
+            <h5 class="fw-bold mb-4">Select Date Range</h5>
+            
+            <div class="date-input-group">
+                <div class="input-wrapper">
+                    <label>From</label>
+                    <input type="date" class="custom-date-input" 
+                           value="@startDate.ToString("yyyy-MM-dd")" 
+                           @onchange="HandleStartDate" />
+                </div>
+                
+                <div class="connector-line"></div>
+
+                <div class="input-wrapper">
+                    <label>To</label>
+                    <input type="date" class="custom-date-input" 
+                           value="@endDate.ToString("yyyy-MM-dd")" 
+                           @onchange="HandleEndDate" />
+                </div>
+            </div>
+
+            <div class="info-box mt-4">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <span>Includes moods, tags, and formatting.</span>
+            </div>
+
+            <button class="export-btn mt-4" @onclick="GenerateExport" disabled="@(entryCount == 0 || isGenerating)">
+                @if (isGenerating)
+                {
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    <span>Generating...</span>
+                }
+                else
+                {
+                    <span>Download PDF</span>
+                    <i class="bi bi-download ms-2"></i>
+                }
+            </button>
+        </div>
     </div>
 </div>
 
@@ -33,12 +85,48 @@
     private DateTime startDate = DateTime.Today.AddDays(-30);
     private DateTime endDate = DateTime.Today;
     private bool isGenerating = false;
+    private int entryCount = 0;
+    private bool isLoadingCount = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RecalculateCount();
+    }
+
+    private async Task HandleStartDate(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            startDate = date;
+            await RecalculateCount();
+        }
+    }
+
+    private async Task HandleEndDate(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            endDate = date;
+            await RecalculateCount();
+        }
+    }
+
+    private async Task RecalculateCount()
+    {
+        isLoadingCount = true;
+        // Use the existing service method to fetch list and count locally
+        // (In a real API this would be a CountAsync DB call, but this is fine for SQLite)
+        var entries = await DbService.GetEntriesByRangeAsync(startDate, endDate);
+        entryCount = entries.Count;
+        isLoadingCount = false;
+    }
 
     private async Task GenerateExport()
     {
+        if (entryCount == 0) return;
+
         isGenerating = true;
-        // Small delay to let UI show "Processing..."
-        await Task.Delay(50); 
+        await Task.Delay(50); // UI Refresh
 
         try 
         {
@@ -46,17 +134,13 @@
             
             if (string.IsNullOrEmpty(filePath))
             {
-                await JS.InvokeVoidAsync("alert", "No entries found in this date range.");
+                await JS.InvokeVoidAsync("alert", "No entries found to export.");
             }
             else
             {
-                // NOTIFICATION: Tell the user to look for the share/save dialog
-                await JS.InvokeVoidAsync("alert", "PDF Generated Successfully!\n\nA sharing menu will open. Please select 'Save to Files' or 'Save As' to pick where you want to store the PDF.");
-
-                // Trigger native Share/Save dialog
                 await Share.Default.RequestAsync(new ShareFileRequest
                 {
-                    Title = "Journify PDF Export",
+                    Title = "Journify Export",
                     File = new ShareFile(filePath)
                 });
             }
@@ -65,6 +149,212 @@
         {
             await JS.InvokeVoidAsync("alert", "Error: " + ex.Message);
         }
-        finally { isGenerating = false; }
+        finally 
+        { 
+            isGenerating = false; 
+        }
     }
 }
+
+<style>
+    .export-container {
+        padding: 40px;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .page-title {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -1px;
+        margin-bottom: 5px;
+        color: var(--text-primary);
+    }
+
+    /* GRID LAYOUT */
+    .export-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 30px;
+        align-items: stretch;
+    }
+
+    /* CARD 1: VISUALS */
+    .visual-card {
+        background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .pdf-icon-wrapper {
+        font-size: 5rem;
+        color: #FF4444; /* PDF Red */
+        position: relative;
+        margin-bottom: 20px;
+        filter: drop-shadow(0 10px 20px rgba(255, 68, 68, 0.2));
+    }
+
+    .pdf-badge {
+        position: absolute;
+        bottom: 10px;
+        right: -10px;
+        background: var(--text-primary);
+        color: var(--bg-primary);
+        font-size: 0.8rem;
+        font-weight: 800;
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+
+    .count-badge {
+        background: var(--accent-color);
+        color: var(--accent-text);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+
+    /* CARD 2: CONTROLS */
+    .controls-card {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 4px 20px var(--shadow-color);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    /* DATE INPUTS */
+    .date-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .input-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .input-wrapper label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .custom-date-input {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 14px;
+        font-size: 1rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.3s, box-shadow 0.3s;
+        color-scheme: light dark; /* Ensures calendar popup follows theme */
+    }
+
+    .custom-date-input:focus {
+        border-color: var(--text-primary);
+        box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.1);
+    }
+
+    .connector-line {
+        height: 1px;
+        background: var(--border-color);
+        width: 100%;
+        position: relative;
+    }
+
+    /* INFO BOX */
+    .info-box {
+        background-color: var(--bg-tertiary);
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+    }
+
+    /* EXPORT BUTTON */
+    .export-btn {
+        background-color: var(--accent-color);
+        color: var(--accent-text);
+        border: none;
+        border-radius: 100px;
+        padding: 16px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s, opacity 0.2s;
+        box-shadow: 0 4px 15px var(--shadow-color);
+    }
+
+    .export-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        opacity: 0.9;
+    }
+
+    .export-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+        box-shadow: none;
+    }
+
+    /* ANIMATION */
+    .floating-anim {
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @@keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* RESPONSIVE */
+    @@media (max-width: 800px) {
+        .export-grid {
+            grid-template-columns: 1fr;
+        }
+        .visual-card {
+            padding: 30px;
+            flex-direction: row;
+            gap: 20px;
+            text-align: left;
+        }
+        .pdf-icon-wrapper {
+            font-size: 3rem;
+            margin-bottom: 0;
+        }
+    }
+</style>

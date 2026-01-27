@@ -3,107 +3,124 @@
 @using JournalApp.Models
 @inject JournalService DbService
 
-<div class="container-fluid p-4">
-    <h2 class="fw-bold mb-4">Insights & Analytics</h2>
+<div class="analytics-container fade-in">
+    
+    <!-- HEADER -->
+    <div class="header-section">
+        <h2 class="page-title">Insights</h2>
+        <p class="page-subtitle">Your writing habits and emotional trends.</p>
+    </div>
 
-    <!-- SUMMARY CARDS -->
-    <div class="row g-4 mb-5">
-        <div class="col-md-3">
-            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
-                <span class="text-muted small fw-bold">CURRENT STREAK</span>
-                <h2 class="display-6 fw-bold mt-2 text-dark">@currentStreak</h2>
-                <p class="small text-secondary mb-0">days in a row</p>
+    <!-- 1. KEY STATS GRID -->
+    <div class="stats-grid">
+        <!-- Current Streak -->
+        <div class="analytics-card stat-card">
+            <div class="stat-icon orange-bg"><i class="bi bi-fire"></i></div>
+            <div>
+                <h3 class="stat-value">@currentStreak</h3>
+                <span class="stat-label">Current Streak</span>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
-                <span class="text-muted small fw-bold">LONGEST STREAK</span>
-                <h2 class="display-6 fw-bold mt-2 text-dark">@longestStreak</h2>
-                <p class="small text-secondary mb-0">personal best</p>
+
+        <!-- Longest Streak -->
+        <div class="analytics-card stat-card">
+            <div class="stat-icon purple-bg"><i class="bi bi-trophy-fill"></i></div>
+            <div>
+                <h3 class="stat-value">@longestStreak</h3>
+                <span class="stat-label">Best Streak</span>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
-                <span class="text-muted small fw-bold">MISSED DAYS</span>
-                <h2 class="display-6 fw-bold mt-2 text-danger">@missedDays</h2>
-                <p class="small text-secondary mb-0">last 30 days</p>
+
+        <!-- Total Words -->
+        <div class="analytics-card stat-card">
+            <div class="stat-icon blue-bg"><i class="bi bi-bar-chart-steps"></i></div>
+            <div>
+                <h3 class="stat-value">@totalWords</h3>
+                <span class="stat-label">Total Words</span>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stoic-card p-4 text-center border rounded shadow-sm bg-white">
-                <span class="text-muted small fw-bold">TOTAL WORDS</span>
-                <h2 class="display-6 fw-bold mt-2 text-dark">@totalWords</h2>
-                <p class="small text-secondary mb-0">written in total</p>
+
+        <!-- Missed Days -->
+        <div class="analytics-card stat-card">
+            <div class="stat-icon red-bg"><i class="bi bi-calendar-x"></i></div>
+            <div>
+                <h3 class="stat-value">@missedDays</h3>
+                <span class="stat-label">Missed (30 Days)</span>
             </div>
         </div>
     </div>
 
-    <!-- MOOD DISTRIBUTION BARS -->
-    <div class="row g-4">
-        <div class="col-md-8">
-            <div class="stoic-card p-4 border rounded shadow-sm bg-white h-100">
-                <h5 class="fw-bold mb-4">Mood Distribution</h5>
-                
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="fw-bold">Positive 😊</span>
-                        <span class="text-muted">@positivePct%</span>
+    <!-- 2. DETAILED ANALYSIS SPLIT -->
+    <div class="details-split">
+        
+        <!-- MOOD DISTRIBUTION -->
+        <div class="analytics-card mood-section">
+            <div class="card-header">
+                <h3>Mood Distribution</h3>
+                <span class="badge-subtle">All Time</span>
+            </div>
+
+            <div class="mood-bars-container">
+                <!-- Happy -->
+                <div class="mood-row">
+                    <div class="mood-info">
+                        <span class="mood-name">Happy 😊</span>
+                        <span class="mood-percent">@positivePct%</span>
                     </div>
-                    <div class="progress" style="height: 12px;">
-                        <div class="progress-bar bg-success" style="width: @positivePct%"></div>
+                    <div class="progress-track">
+                        <div class="progress-fill bg-success" style="width: @positivePct%"></div>
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="fw-bold">Neutral 😐</span>
-                        <span class="text-muted">@neutralPct%</span>
+                <!-- Neutral -->
+                <div class="mood-row">
+                    <div class="mood-info">
+                        <span class="mood-name">Neutral 😐</span>
+                        <span class="mood-percent">@neutralPct%</span>
                     </div>
-                    <div class="progress" style="height: 12px;">
-                        <div class="progress-bar bg-info" style="width: @neutralPct%"></div>
+                    <div class="progress-track">
+                        <div class="progress-fill bg-secondary" style="width: @neutralPct%"></div>
                     </div>
                 </div>
 
-                <div class="mb-0">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="fw-bold">Negative 😔</span>
-                        <span class="text-muted">@negativePct%</span>
+                <!-- Sad -->
+                <div class="mood-row">
+                    <div class="mood-info">
+                        <span class="mood-name">Sad 😔</span>
+                        <span class="mood-percent">@negativePct%</span>
                     </div>
-                    <div class="progress" style="height: 12px;">
-                        <div class="progress-bar bg-danger" style="width: @negativePct%"></div>
+                    <div class="progress-track">
+                        <div class="progress-fill bg-danger" style="width: @negativePct%"></div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- TOP TAGS -->
-        <div class="col-md-4">
-            <div class="stoic-card p-4 border rounded shadow-sm bg-white h-100">
-                <h5 class="fw-bold mb-3">Frequent Tags</h5>
-                <hr />
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                    @if (topTags != null && topTags.Any())
+        <div class="analytics-card tags-section">
+            <div class="card-header">
+                <h3>Frequent Topics</h3>
+            </div>
+
+            <div class="tags-cloud">
+                @if (topTags != null && topTags.Any())
+                {
+                    @foreach (var tag in topTags)
                     {
-                        @foreach (var tag in topTags)
-                        {
-                            <span class="badge bg-light text-dark border p-2">#@tag</span>
-                        }
+                        <span class="tag-pill">#@tag</span>
                     }
-                    else
-                    {
-                        <span class="text-muted small">No tags used yet.</span>
-                    }
-                </div>
+                }
+                else
+                {
+                    <div class="empty-tags">
+                        <i class="bi bi-hash"></i>
+                        <p>No tags used yet.</p>
+                    </div>
+                }
             </div>
         </div>
     </div>
 </div>
-
-<style>
-    .progress { background-color: #f0f0f0; border-radius: 10px; }
-    .progress-bar { border-radius: 10px; transition: width 0.6s ease; }
-    .stoic-card { transition: transform 0.2s; }
-</style>
 
 @code {
     private int currentStreak = 0;
@@ -147,9 +164,137 @@
                 .Select(t => t.Trim().Replace("#", ""))
                 .GroupBy(t => t)
                 .OrderByDescending(g => g.Count())
-                .Take(5)
+                .Take(10)
                 .Select(g => g.Key)
                 .ToList();
         }
     }
 }
+
+<style>
+    /* --- LAYOUT --- */
+    .analytics-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 60px;
+        display: flex; flex-direction: column; gap: 30px;
+        color: var(--text-primary);
+    }
+
+    .header-section { margin-bottom: 10px; }
+    .page-title { font-size: 2.5rem; font-weight: 800; margin: 0; color: var(--text-primary); letter-spacing: -1px; }
+    .page-subtitle { color: var(--text-secondary); font-weight: 500; font-size: 1rem; }
+
+    /* --- CARDS & HOVER EFFECTS --- */
+    .analytics-card {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 25px;
+        transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.25s ease;
+        box-shadow: 0 4px 10px var(--shadow-color);
+    }
+
+    .analytics-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px var(--shadow-color);
+        border-color: var(--text-secondary); /* Subtle highlight on border */
+    }
+
+    /* --- STATS GRID --- */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+    
+    .stat-card {
+        display: flex; align-items: center; gap: 15px; padding: 20px;
+    }
+
+    .stat-icon {
+        width: 50px; height: 50px; border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; flex-shrink: 0;
+    }
+    .stat-value { font-size: 1.8rem; font-weight: 800; margin: 0; line-height: 1; color: var(--text-primary); }
+    .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
+
+    /* Icon Colors (Theme Compatible) */
+    .purple-bg { background: rgba(138, 111, 232, 0.1); color: #8A6FE8; }
+    .orange-bg { background: rgba(234, 88, 12, 0.1); color: #EA580C; }
+    .blue-bg { background: rgba(59, 130, 246, 0.1); color: #3B82F6; }
+    .red-bg { background: rgba(239, 68, 68, 0.1); color: #EF4444; }
+
+    :global(.dark-theme) .purple-bg { background: rgba(138, 111, 232, 0.15); }
+    :global(.dark-theme) .orange-bg { background: rgba(234, 88, 12, 0.15); }
+    :global(.dark-theme) .blue-bg { background: rgba(59, 130, 246, 0.15); }
+    :global(.dark-theme) .red-bg { background: rgba(239, 68, 68, 0.15); }
+
+    /* --- DETAILS SPLIT --- */
+    .details-split {
+        display: grid; grid-template-columns: 2fr 1fr; gap: 20px;
+    }
+
+    .card-header {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+    }
+    .card-header h3 { font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--text-primary); }
+    
+    .badge-subtle {
+        background: var(--bg-tertiary); color: var(--text-secondary);
+        padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+    }
+
+    /* Mood Bars */
+    .mood-bars-container { display: flex; flex-direction: column; gap: 20px; }
+    .mood-row { display: flex; flex-direction: column; gap: 8px; }
+    .mood-info { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+    .mood-percent { color: var(--text-secondary); }
+    
+    .progress-track {
+        width: 100%; height: 10px; background-color: var(--bg-tertiary);
+        border-radius: 10px; overflow: hidden;
+    }
+    .progress-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease; }
+    
+    .bg-success { background-color: #10B981 !important; }
+    .bg-secondary { background-color: #9CA3AF !important; }
+    .bg-danger { background-color: #EF4444 !important; }
+
+    /* Tags Cloud */
+    .tags-cloud { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
+    
+    .tag-pill {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        padding: 8px 16px; border-radius: 50px;
+        font-size: 0.85rem; font-weight: 600;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+    .tag-pill:hover {
+        background-color: var(--accent-color);
+        color: var(--accent-text);
+        transform: scale(1.05);
+    }
+
+    .empty-tags {
+        width: 100%; text-align: center; color: var(--text-muted); padding: 40px 0;
+    }
+    .empty-tags i { font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.5; }
+
+    /* Animation */
+    .fade-in { animation: fadeIn 0.6s ease-out forwards; opacity: 0; transform: translateY(10px); }
+    @@keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+    /* Responsive */
+    @@media (max-width: 1000px) {
+        .stats-grid { grid-template-columns: 1fr 1fr; }
+        .details-split { grid-template-columns: 1fr; }
+    }
+    @@media (max-width: 600px) {
+        .stats-grid { grid-template-columns: 1fr; }
+        .analytics-container { padding: 30px 20px; }
+    }
+</style>
