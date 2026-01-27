@@ -4,245 +4,261 @@
 @inject JournalService DbService
 @inject NavigationManager Nav
 
-<div class="timeline-zen-container">
+<div class="timeline-container">
     
-    <!-- 1. HEADER TITLE -->
-    <div class="mb-4 text-center">
-        <h2 class="fw-bold display-5">Timeline</h2>
-        <p class="text-muted">Your journey, one entry at a time.</p>
+    <!-- 1. HEADER SECTION -->
+    <div class="timeline-header fade-in-up">
+        <h2 class="page-title">Timeline</h2>
+        <p class="page-subtitle">Your story, captured one day at a time.</p>
     </div>
 
-    <!-- 2. UNIFIED TOOLBAR (Search + Filters) -->
-    <div class="unified-toolbar shadow-sm">
-        
-        <!-- SECTION A: SEARCH -->
-        <div class="toolbar-section search-section">
-            <i class="bi bi-search text-secondary ms-3"></i>
-            <input type="text" 
-                   class="toolbar-input" 
-                   placeholder="Search memories..." 
-                   value="@searchText"
-                   @oninput="HandleSearchInput" />
+    <!-- 2. FLOATING TOOLBAR (Centered & Polished) -->
+    <div class="toolbar-wrapper fade-in-up" style="animation-delay: 0.1s;">
+        <div class="glass-toolbar">
+            
+            <!-- Search -->
+            <div class="search-box">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" 
+                       class="search-input" 
+                       placeholder="Search memories..." 
+                       value="@searchText"
+                       @oninput="HandleSearchInput" />
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Mood Filter -->
+            <div class="mood-group">
+                <button class="mood-chip @(selectedMood == null ? "active" : "")" @onclick="() => SetMood(null)">All</button>
+                <button class="mood-chip icon-only @(selectedMood == "Happy" ? "active" : "")" @onclick='() => SetMood("Happy")' title="Happy">😊</button>
+                <button class="mood-chip icon-only @(selectedMood == "Neutral" ? "active" : "")" @onclick='() => SetMood("Neutral")' title="Neutral">😐</button>
+                <button class="mood-chip icon-only @(selectedMood == "Sad" ? "active" : "")" @onclick='() => SetMood("Sad")' title="Sad">😔</button>
+            </div>
+
+            <div class="divider d-none d-md-block"></div>
+
+            <!-- Date Filter -->
+            <div class="date-group d-none d-md-flex">
+                <input type="date" class="date-picker" value="@(startDate?.ToString("yyyy-MM-dd"))" @onchange="HandleStartDateChange" />
+                <span class="arrow">→</span>
+                <input type="date" class="date-picker" value="@(endDate?.ToString("yyyy-MM-dd"))" @onchange="HandleEndDateChange" />
+            </div>
+
+            <!-- Reset Button -->
+            @if (!string.IsNullOrEmpty(searchText) || !string.IsNullOrEmpty(selectedMood) || startDate.HasValue || endDate.HasValue)
+            {
+                <button class="reset-btn" @onclick="ResetFilters">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            }
         </div>
-
-        <div class="vertical-divider"></div>
-
-        <!-- SECTION B: MOODS -->
-        <div class="toolbar-section mood-section">
-            <button class="mood-btn @(selectedMood == null ? "active" : "")" @onclick="() => SetMood(null)" title="All">All</button>
-            <button class="mood-btn @(selectedMood == "Happy" ? "active" : "")" @onclick='() => SetMood("Happy")' title="Happy">😊</button>
-            <button class="mood-btn @(selectedMood == "Neutral" ? "active" : "")" @onclick='() => SetMood("Neutral")' title="Neutral">😐</button>
-            <button class="mood-btn @(selectedMood == "Sad" ? "active" : "")" @onclick='() => SetMood("Sad")' title="Sad">😔</button>
-        </div>
-
-        <div class="vertical-divider d-none d-md-block"></div>
-
-        <!-- SECTION C: DATES -->
-        <div class="toolbar-section date-section d-none d-md-flex">
-            <input type="date" class="date-mini-input" value="@(startDate?.ToString("yyyy-MM-dd"))" @onchange="HandleStartDateChange" title="Start Date"/>
-            <span class="text-muted small">to</span>
-            <input type="date" class="date-mini-input" value="@(endDate?.ToString("yyyy-MM-dd"))" @onchange="HandleEndDateChange" title="End Date"/>
-        </div>
-
-        <!-- SECTION D: RESET (Only visible if filtered) -->
-        @if (!string.IsNullOrEmpty(searchText) || !string.IsNullOrEmpty(selectedMood) || startDate.HasValue || endDate.HasValue)
-        {
-            <button class="btn-reset" @onclick="ResetFilters" title="Clear Filters">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        }
     </div>
 
-    <!-- 3. MAIN FEED -->
-    <div class="feed-container mt-5">
+    <!-- 3. TIMELINE FEED -->
+    <div class="feed-list mt-5">
         @if (isLoading)
         {
-            <div class="text-center py-5 text-muted fs-5">Loading...</div>
+            <div class="state-message">
+                <div class="spinner-border text-secondary mb-2" role="status"></div>
+                <p>Loading entries...</p>
+            </div>
         }
         else if (filteredEntries.Count == 0)
         {
-             <div class="empty-state">
-                 <i class="bi bi-filter text-muted fs-1 mb-3"></i>
-                 <p class="fs-5 fw-bold text-muted">No entries match your filters.</p>
-                 <button class="btn btn-dark rounded-pill px-4" @onclick="ResetFilters">Clear Filters</button>
+             <div class="state-message">
+                 <i class="bi bi-journal-x fs-1 mb-3 opacity-50"></i>
+                 <p>No entries found matching filters.</p>
+                 <button class="text-btn" @onclick="ResetFilters">Clear filters</button>
              </div>
         }
         else
         {
             @foreach (var entry in filteredEntries)
             {
-                <div class="timeline-card fade-in-up" @onclick='() => Nav.NavigateTo($"journal?date={entry.EntryDate:yyyy-MM-dd}")'>
+                <div class="memory-card fade-in-up" @onclick='() => Nav.NavigateTo($"journal?date={entry.EntryDate:yyyy-MM-dd}")'>
                     
-                    <!-- Date Badge -->
-                    <div class="card-date">
-                        <span class="d-day">@entry.EntryDate.Day</span>
-                        <span class="d-month">@entry.EntryDate.ToString("MMM")</span>
+                    <!-- Left: Date -->
+                    <div class="date-col">
+                        <span class="day">@entry.EntryDate.Day</span>
+                        <span class="month">@entry.EntryDate.ToString("MMM")</span>
+                        <span class="year">@entry.EntryDate.Year</span>
                     </div>
 
-                    <!-- Content -->
-                    <div class="card-content">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <h4 class="fw-bold mb-0 text-dark">@(string.IsNullOrEmpty(entry.Title) ? "Untitled" : entry.Title)</h4>
-                            <div class="mood-badge">
+                    <!-- Middle: Content -->
+                    <div class="content-col">
+                        <div class="top-row">
+                            <h4 class="title">@(string.IsNullOrEmpty(entry.Title) ? "Untitled Entry" : entry.Title)</h4>
+                            <div class="mood-display" title="@entry.PrimaryMood">
                                 @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐")
                             </div>
                         </div>
                         
-                        <p class="text-secondary mb-2 text-truncate-2">@(StripHtml(entry.Content ?? ""))</p>
+                        <p class="preview-text">@(StripHtml(entry.Content ?? ""))</p>
                         
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="tags-row">
-                                @if (!string.IsNullOrEmpty(entry.Tags))
+                        @if (!string.IsNullOrEmpty(entry.Tags))
+                        {
+                            <div class="tags-list">
+                                @foreach(var tag in entry.Tags.Split(','))
                                 {
-                                    @foreach(var tag in entry.Tags.Split(','))
-                                    {
-                                        <span class="mini-tag">#@tag.Trim()</span>
-                                    }
+                                    <span class="tag">#@tag.Trim()</span>
                                 }
                             </div>
-                            <small class="text-muted" style="font-size: 0.75rem;">@entry.EntryDate.Year</small>
-                        </div>
+                        }
                     </div>
 
-                    <!-- Delete (ALWAYS VISIBLE NOW) -->
-                    <button class="delete-icon" @onclick:stopPropagation="true" @onclick="() => DeleteEntry(entry)">
+                    <!-- Right: Actions (Delete) -->
+                    <button class="delete-action" @onclick:stopPropagation="true" @onclick="() => DeleteEntry(entry)">
                         <i class="bi bi-trash3"></i>
                     </button>
                 </div>
             }
         }
     </div>
-
 </div>
 
 <style>
-    /* --- LAYOUT --- */
-    .timeline-zen-container {
-        max-width: 1200px; /* INCREASED WIDTH */
+    /* --- PAGE LAYOUT --- */
+    .timeline-container {
+        max-width: 900px;
         margin: 0 auto;
-        padding: 40px 20px;
+        padding: 60px 20px;
     }
 
-    /* --- UNIFIED TOOLBAR --- */
-    .unified-toolbar {
-        max-width: 900px; /* Keep filter bar slightly smaller than cards for aesthetics, or set to 100% */
-        margin: 0 auto;
-        background: white;
-        border: 1px solid #E5E5E5;
-        border-radius: 50px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        padding: 0 10px;
-        transition: box-shadow 0.2s;
+    .timeline-header { text-align: center; margin-bottom: 40px; }
+    .page-title {
+        font-size: 3rem; font-weight: 900; color: var(--text-main);
+        letter-spacing: -1.5px; margin-bottom: 5px;
     }
-    .unified-toolbar:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+    .page-subtitle { color: var(--text-muted); font-size: 1.1rem; }
 
-    .toolbar-section { display: flex; align-items: center; height: 100%; }
-
-    /* Search Section */
-    .search-section { flex-grow: 1; min-width: 150px; }
-    .toolbar-input {
-        border: none; background: transparent; height: 100%; width: 100%;
-        padding-left: 10px; font-size: 1rem; outline: none; color: #333;
-    }
-    .toolbar-input::placeholder { color: #BBB; }
-
-    /* Divider */
-    .vertical-divider { width: 1px; height: 30px; background: #EEE; margin: 0 10px; }
-
-    /* Mood Section */
-    .mood-section { gap: 5px; }
-    .mood-btn {
-        background: transparent; border: none; border-radius: 50%;
-        width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;
-        font-size: 1.1rem; cursor: pointer; transition: background 0.2s; color: #555; font-weight: 600; font-size: 0.8rem;
-    }
-    .mood-btn:hover { background: #F5F5F5; }
-    .mood-btn.active { background: #1A1A1A; color: white; }
-
-    /* Date Section */
-    .date-section { gap: 8px; padding-right: 10px; }
-    .date-mini-input {
-        border: none; background: #F9F9F9; border-radius: 6px;
-        padding: 4px 8px; font-size: 0.8rem; color: #555; font-family: inherit; cursor: pointer;
+    /* --- TOOLBAR STYLES --- */
+    .toolbar-wrapper {
+        display: flex; justify-content: center;
+        position: sticky; top: 20px; z-index: 100;
     }
 
-    /* Reset Button */
-    .btn-reset {
-        background: #FEE2E2; color: #DC2626; border: none;
-        width: 35px; height: 35px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        margin-left: 10px; cursor: pointer; flex-shrink: 0;
+    .glass-toolbar {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 100px;
+        padding: 8px 10px;
+        display: flex; align-items: center;
+        box-shadow: var(--shadow-md);
+        width: 100%; max-width: 850px;
+        transition: transform 0.2s;
     }
-    .btn-reset:hover { background: #FECACA; }
-
-
-    /* --- CARDS --- */
-    .feed-container { display: flex; flex-direction: column; gap: 20px; }
-
-    .timeline-card {
-        background: white; border: 1px solid #F0F0F0;
-        border-radius: 24px; padding: 25px;
-        display: flex; gap: 25px; align-items: flex-start;
-        cursor: pointer; position: relative;
-        transition: all 0.2s ease;
-    }
-    .timeline-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 15px 40px rgba(0,0,0,0.06);
-        border-color: #E5E5E5;
-    }
-
-    .card-date {
-        background: #FAFAFA; border: 1px solid #EEE;
-        border-radius: 16px; width: 65px; height: 65px;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        flex-shrink: 0;
-    }
-    .d-day { font-size: 1.4rem; font-weight: 800; line-height: 1; color: #1A1A1A; }
-    .d-month { font-size: 0.7rem; font-weight: 700; color: #AAA; text-transform: uppercase; }
-
-    .card-content { flex: 1; min-width: 0; }
     
-    .text-truncate-2 {
+    /* Search */
+    .search-box { display: flex; align-items: center; flex-grow: 1; padding-left: 15px; }
+    .search-icon { color: var(--text-muted); font-size: 1.1rem; margin-right: 10px; }
+    .search-input {
+        border: none; background: transparent;
+        font-size: 1rem; color: var(--text-main); width: 100%; font-weight: 500;
+    }
+    .search-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+    .divider { width: 1px; height: 24px; background-color: var(--border-color); margin: 0 15px; }
+
+    /* Mood Chips */
+    .mood-group { display: flex; gap: 5px; }
+    .mood-chip {
+        background: transparent; border: 1px solid transparent;
+        color: var(--text-muted); padding: 6px 14px;
+        border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .mood-chip.icon-only { padding: 6px 10px; font-size: 1.1rem; }
+    .mood-chip:hover { background-color: var(--hover-bg); color: var(--text-main); }
+    .mood-chip.active { background-color: var(--accent-color); color: var(--accent-text); box-shadow: var(--shadow-sm); }
+
+    /* Date Picker */
+    .date-group { display: flex; align-items: center; gap: 8px; }
+    .date-picker {
+        background-color: var(--input-bg); border: none; color: var(--text-main);
+        padding: 6px 10px; border-radius: 8px; font-size: 0.8rem;
+        font-family: inherit; cursor: pointer;
+        color-scheme: light dark; /* Dark mode calendar fix */
+    }
+    .arrow { color: var(--text-muted); font-size: 0.8rem; }
+
+    /* Reset */
+    .reset-btn {
+        width: 32px; height: 32px; border-radius: 50%;
+        background-color: #FFEDED; color: #FF4444; border: none;
+        display: flex; align-items: center; justify-content: center;
+        margin-left: 10px; cursor: pointer; transition: transform 0.2s;
+    }
+    .reset-btn:hover { transform: scale(1.1); background-color: #FFDCDC; }
+    .dark-theme .reset-btn { background-color: #3A1E1E; }
+
+    /* --- CARD STYLING --- */
+    .feed-list { display: flex; flex-direction: column; gap: 20px; }
+
+    .memory-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 24px; padding: 25px 30px;
+        display: flex; align-items: flex-start; gap: 30px;
+        cursor: pointer; transition: all 0.2s ease; position: relative;
+    }
+    .memory-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--text-muted);
+    }
+
+    /* Date Column */
+    .date-col {
+        display: flex; flex-direction: column; align-items: center;
+        min-width: 60px; padding-right: 25px;
+        border-right: 2px solid var(--border-color);
+    }
+    .day { font-size: 1.8rem; font-weight: 900; line-height: 1; color: var(--text-main); }
+    .month { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .year { font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; opacity: 0.6; }
+
+    /* Content Column */
+    .content-col { flex: 1; overflow: hidden; }
+    .top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+    .title {
+        font-size: 1.2rem; font-weight: 800; color: var(--text-main);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
+    }
+    .mood-display { font-size: 1.2rem; }
+
+    .preview-text {
+        font-size: 1rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px;
         display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
 
-    .mini-tag {
-        font-size: 0.75rem; color: #512BD4; background: #F3F0FF;
-        padding: 3px 10px; border-radius: 6px; font-weight: 600; margin-right: 5px;
+    .tags-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag {
+        font-size: 0.75rem; font-weight: 600;
+        background-color: var(--input-bg); color: var(--text-muted);
+        padding: 4px 10px; border-radius: 6px;
     }
 
-    .mood-badge { font-size: 1.4rem; line-height: 1; }
-
-    /* DELETE ICON UPDATED: Always Visible */
-    .delete-icon {
-        position: absolute; top: 20px; right: 20px;
-        background: transparent; border: none; 
-        color: #E5E5E5; /* Light grey by default so it's not distracting */
-        transition: color 0.2s; 
-        opacity: 1; /* Always visible */
-        font-size: 1.1rem;
+    /* Delete Action */
+    .delete-action {
+        background: transparent; border: none; color: var(--text-muted);
+        opacity: 0.3; font-size: 1.2rem; transition: all 0.2s;
     }
-    .delete-icon:hover { color: #DC2626; } /* Red on hover */
-    .timeline-card:hover .delete-icon { color: #BBB; } /* Darker grey when card hovered */
-    .timeline-card:hover .delete-icon:hover { color: #DC2626; } /* Red when specifically hovered */
+    .memory-card:hover .delete-action { opacity: 1; }
+    .delete-action:hover { color: #FF4444; transform: scale(1.1); }
 
-    .empty-state {
-        text-align: center; padding: 60px 20px;
-        background: white; border-radius: 24px; border: 2px dashed #E5E5E5;
-    }
+    /* Empty State */
+    .state-message { text-align: center; color: var(--text-muted); padding: 40px; }
+    .text-btn { background: none; border: none; color: var(--accent-color); font-weight: 700; text-decoration: underline; cursor: pointer; }
 
-    /* Animation */
-    .fade-in-up { opacity: 0; transform: translateY(10px); animation: fadeInUp 0.4s forwards; }
-    @@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-
+    /* Responsive */
     @@media (max-width: 768px) {
-        .unified-toolbar { height: auto; flex-wrap: wrap; padding: 10px; border-radius: 20px; gap: 10px; }
-        .vertical-divider { display: none; }
-        .toolbar-section { width: 100%; justify-content: space-between; }
-        .search-section { border-bottom: 1px solid #EEE; padding-bottom: 10px; margin-bottom: 5px; }
+        .glass-toolbar { flex-wrap: wrap; height: auto; border-radius: 24px; padding: 15px; }
+        .divider, .date-group { display: none; }
+        .search-box { width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; padding-left: 0; }
+        .memory-card { flex-direction: column; gap: 15px; padding: 20px; }
+        .date-col { flex-direction: row; border-right: none; border-bottom: 1px solid var(--border-color); padding: 0 0 10px 0; width: 100%; justify-content: flex-start; gap: 10px; align-items: baseline; }
+        .delete-action { position: absolute; top: 20px; right: 20px; opacity: 1; }
     }
 </style>
 

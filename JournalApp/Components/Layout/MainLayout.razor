@@ -3,65 +3,34 @@
 @inject ThemeService Theme
 @implements IDisposable
 
-<LockScreen>
-    <div class="main-wrapper @Theme.ThemeClass">
-        <NavMenu />
+<!-- 
+    CRITICAL: This div applies 'dark-theme' or 'light-theme' 
+    to the ENTIRE application window.
+-->
+<div id="app-root" class="@Theme.ThemeClass" style="height: 100vh; width: 100vw; background-color: var(--bg-primary); color: var(--text-primary);">
+    
+    <LockScreen>
+        <div class="main-wrapper">
+            <NavMenu />
 
-        <main class="content-area">
-            @Body
-        </main>
-    </div>
-</LockScreen>
+            <main class="content-area">
+                @Body
+            </main>
+        </div>
+    </LockScreen>
+
+</div>
 
 @code {
-protected override void OnInitialized()
-{
-Theme.OnThemeChanged += UpdateUI;
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += UpdateUI;
+    }
+
+    private void UpdateUI() => StateHasChanged();
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= UpdateUI;
+    }
 }
-
-private void UpdateUI() => StateHasChanged();
-
-public void Dispose()
-{
-Theme.OnThemeChanged -= UpdateUI;
-}
-}
-
-<style>
-    /* GLOBAL THEME VARIABLES (Item 9) */
-    .light-theme {
-        --bg-color: #F8F8F8;
-        --card-bg: #FFFFFF;
-        --text-main: #1A1A1A;
-        --text-muted: #717171;
-        --border-color: #ECECEC;
-    }
-
-    .dark-theme {
-        --bg-color: #121212;
-        --card-bg: #1E1E1E;
-        --text-main: #FFFFFF;
-        --text-muted: #A0A0A0;
-        --border-color: #333333;
-    }
-
-    .main-wrapper {
-        display: flex;
-        background-color: var(--bg-color);
-        color: var(--text-main);
-        min-height: 100vh;
-        transition: background-color 0.3s, color 0.3s;
-    }
-
-    .content-area {
-        flex-grow: 1;
-        overflow-y: auto;
-    }
-
-    /* Auto-apply to all common components */
-    .stoic-card, .card, .activity-row, .calendar-card, .month-selector, .calendar-wrapper {
-        background-color: var(--card-bg) !important;
-        color: var(--text-main) !important;
-        border-color: var(--border-color) !important;
-    }
-</style>

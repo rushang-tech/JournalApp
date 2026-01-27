@@ -1,195 +1,237 @@
+@using JournalApp.Services
+@inject ThemeService Theme
 @inject IJSRuntime JS
+@implements IDisposable
 
 @if (IsLocked)
 {
-    <!-- Added @onclick to ensure focus stays on input when clicking background -->
-<div class="lock-overlay" @onclick="KeepFocus">
+    <div class="lock-overlay @Theme.ThemeClass">
+        
+        <div class="content-centered">
+            <!-- Brand -->
+            <h1 class="brand-text">Journify</h1>
 
-    <div class="content-centered">
-        <!-- Figma Journify Title -->
-        <h1 class="brand-text">Journify</h1>
+            <!-- Welcome -->
+            <h2 class="welcome-text">Welcome Back, @SystemName</h2>
+            
+            <!-- Instructions -->
+            <p class="instruction-text">Enter PIN to unlock</p>
 
-        <!-- Figma Welcome Text -->
-        <h2 class="welcome-text">Welcome Back, @SystemName</h2>
-
-        <!-- Figma Instruction Text -->
-        <p class="instruction-text">Enter PIN to unlock</p>
-
-        <!-- PIN Container (Rectangle 24) -->
-        <div class="pin-wrapper @(isError ? "shake-animation" : "")">
-
-            <!-- VISUAL BOXES -->
-            <div class="pin-visuals">
-                <div class="pin-box">
-                    @if (pin.Length > 0) { <div class="dot"></div> }
+            <!-- PIN Container -->
+            <div class="pin-wrapper @(isError ? "shake-animation" : "")">
+                
+                <!-- VISUAL BOXES -->
+                <div class="pin-visuals">
+                    @for (int i = 0; i < 4; i++)
+                    {
+                        <div class="pin-box">
+                            @if (pin.Length > i) 
+                            { 
+                                <div class="dot"></div> 
+                            }
+                        </div>
+                    }
                 </div>
-                <div class="pin-box">
-                    @if (pin.Length > 1) { <div class="dot"></div> }
-                </div>
-                <div class="pin-box">
-                    @if (pin.Length > 2) { <div class="dot"></div> }
-                </div>
-                <div class="pin-box">
-                    @if (pin.Length > 3) { <div class="dot"></div> }
-                </div>
+
+                <!-- GHOST INPUT -->
+                <!-- Note: type="tel" often prevents 'e' and symbols better on mobile than 'number' -->
+                <input type="tel" 
+                       inputmode="numeric"
+                       pattern="[0-9]*"
+                       autocomplete="off"
+                       class="ghost-input" 
+                       value="@pin" 
+                       @oninput="HandleInput" 
+                       maxlength="4" 
+                       autofocus />
             </div>
 
-            <!-- GHOST INPUT 
-                 Changed type to "tel" to handle sanitization better than "number".
-                 Added @ref for focus management.
-            -->
-            <input @ref="pinInput"
-                   type="tel"
-                   inputmode="numeric"
-                   pattern="[0-9]*"
-                   class="ghost-input"
-                   value="@pin"
-                   @oninput="HandleInput"
-                   maxlength="4"
-                   autoComplete="off"
-                   autofocus />
+            <!-- Error Message -->
+            <div class="error-container">
+                <p class="error-text @(string.IsNullOrEmpty(errorMessage) ? "hidden" : "visible")">
+                    @errorMessage
+                </p>
+            </div>
         </div>
-    </div>
 
-</div>
+    </div>
 }
 else
 {
-@ChildContent
+    @ChildContent
 }
 
 @code {
-[Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    private bool IsLocked = true;
+    private string pin = "";
+    private bool isError = false;
+    private string errorMessage = "";
+    private string CorrectPin = "1234"; 
+    
+    private string SystemName => Environment.UserName; 
+    
+    // To handle error message timer cancellation
+    private CancellationTokenSource? _errorCts;
 
-private bool IsLocked = true;
-private string pin = "";
-private bool isError = false;
-private string CorrectPin = "1234";
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += StateHasChanged;
+    }
 
-// Reference to the input element to force focus
-private ElementReference pinInput;
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= StateHasChanged;
+        _errorCts?.Dispose();
+    }
 
-private string SystemName => Environment.UserName;
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        var rawInput = e.Value?.ToString() ?? "";
 
-protected override async Task OnAfterRenderAsync(bool firstRender)
-{
-// Ensure input is focused when component loads
-if (firstRender && IsLocked)
-{
-await KeepFocus();
-}
-}
+        // 1. SANITIZATION: Filter only digits
+        string sanitizedInput = new string(rawInput.Where(char.IsDigit).ToArray());
 
-private async Task KeepFocus()
-{
-try
-{
-if (IsLocked)
-{
-await pinInput.FocusAsync();
-}
-}
-catch
-{
-// Ignore focus errors if element isn't rendered yet
-}
-}
+        // 2. CHECK: Did we find bad characters?
+        if (rawInput != sanitizedInput)
+        {
+            // Keep the valid numbers, discard the letter/symbol
+            pin = sanitizedInput;
+            
+            // Trigger UI Error, but DO NOT return early. 
+            // We force the state update so the input value is corrected in the DOM immediately.
+            _ = ShowError("Numbers only"); 
+        }
+        else
+        {
+            // Input was clean
+            pin = sanitizedInput;
+        }
 
-private async Task HandleInput(ChangeEventArgs e)
-{
-var rawValue = e.Value?.ToString() ?? "";
+        // 3. Safety Trim
+        if (pin.Length > 4) 
+            pin = pin.Substring(0, 4);
 
-// Strictly filter to only digits
-var numericValue = new string(rawValue.Where(char.IsDigit).ToArray());
+        // 4. CHECK UNLOCK
+        if (pin.Length == 4)
+        {
+            if (pin == CorrectPin)
+            {
+                await Task.Delay(100);
+                IsLocked = false;
+            }
+            else
+            {
+                // Wrong PIN logic
+                pin = ""; // Clear input completely
+                _ = ShowError("Incorrect PIN");
+            }
+        }
+    }
 
-// Cap length at 4
-if (numericValue.Length > 4)
-{
-numericValue = numericValue.Substring(0, 4);
-}
+    private async Task ShowError(string message)
+    {
+        // Cancel any previous error timer so messages don't flicker weirdly
+        _errorCts?.Cancel();
+        _errorCts = new CancellationTokenSource();
+        var token = _errorCts.Token;
 
-// Update state
-pin = numericValue;
+        // Set message and start shake
+        errorMessage = message;
+        isError = true;
+        StateHasChanged();
 
-// Force a UI update immediately to remove any letters visually
-StateHasChanged();
+        try
+        {
+            await Task.Delay(400, token);
+            isError = false;
+            StateHasChanged();
 
-if (pin.Length == 4)
-{
-if (pin == CorrectPin)
-{
-await Task.Delay(150);
-IsLocked = false;
-}
-else
-{
-isError = true;
-pin = "";
-await Task.Delay(500);
-isError = false;
-// Re-focus after error animation
-await KeepFocus();
-}
-}
-}
+            // Keep text visible for a bit longer (1.5s total), then hide
+            await Task.Delay(1100, token);
+            errorMessage = "";
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // If a new error comes in, just ignore this old task
+        }
+    }
 }
 
 <style>
+    /* THEME VARIABLES */
+    .light-theme {
+        --lock-bg: #ECECEC;
+        --lock-text: #000000;
+        --lock-subtext: #979797;
+        --pin-box-bg: #D9D9D9;
+        --pin-dot: #000000;
+    }
+
+    .dark-theme {
+        --lock-bg: #121212;
+        --lock-text: #FFFFFF;
+        --lock-subtext: #A0A0A0;
+        --pin-box-bg: #2C2C2C;
+        --pin-dot: #FFFFFF;
+    }
+
+    /* MAIN CONTAINER */
     .lock-overlay {
         position: fixed;
         top: 0; left: 0; width: 100vw; height: 100vh;
-        background-color: #ECECEC; /* Figma Rectangle 2 */
+        background-color: var(--lock-bg);
         z-index: 99999;
         display: flex; align-items: center; justify-content: center;
         font-family: 'Poppins', sans-serif;
-        cursor: default; /* Ensure clicking doesn't show text cursor elsewhere */
+        transition: background-color 0.3s ease;
     }
 
     .content-centered {
-        display: flex;
-        flex-direction: column;
+        display: flex; 
+        flex-direction: column; 
         align-items: center;
         text-align: center;
+        width: 100%;
+        max-width: 450px;
+        /* Added gap for vertical whitespace */
+        gap: 15px; 
     }
 
-    /* FIGMA: Journify */
+    /* TYPOGRAPHY */
     .brand-text {
-        font-style: normal;
         font-weight: 900;
-        font-size: 64px;
-        line-height: 96px;
-        text-align: center;
-        letter-spacing: -0.05em;
-        color: #000000;
-        margin-bottom: 5px; /* Spacing to reach the 356px top of welcome text */
+        font-size: 3.5rem;
+        letter-spacing: -2px;
+        color: var(--lock-text);
+        line-height: 1.1;
+        margin-bottom: 20px; /* More space below Title */
     }
 
-    /* FIGMA: Welcome Back, (Placeholder) */
     .welcome-text {
-        font-style: normal;
         font-weight: 700;
-        font-size: 30px;
-        line-height: 45px;
-        color: #000000;
+        font-size: 1.6rem;
+        color: var(--lock-text);
         margin: 0;
     }
 
-    /* FIGMA: Enter PIN to unlock */
     .instruction-text {
-        font-style: normal;
-        font-weight: 700;
-        font-size: 20px;
-        line-height: 30px;
-        color: #979797;
-        margin-top: 15px;
-        margin-bottom: 25px;
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--lock-subtext);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 20px; /* Space between text and PIN box */
     }
 
-    /* FIGMA: Rectangle 24 */
+    /* PIN BOX WRAPPER */
     .pin-wrapper {
         position: relative;
-        width: 352px;
-        height: 84px;
+        width: 340px; 
+        height: 80px; /* Slightly taller */
+        margin-bottom: 10px;
     }
 
     .pin-visuals {
@@ -197,30 +239,61 @@ await KeepFocus();
         justify-content: space-between;
         width: 100%;
         height: 100%;
+        gap: 20px; /* Space between the squares */
     }
 
     .pin-box {
-        width: 75px;
-        height: 84px;
-        background: #D9D9D9;
-        border-radius: 10px;
+        flex: 1;
+        background: var(--pin-box-bg);
+        border-radius: 18px; /* Softer corners */
         display: flex; align-items: center; justify-content: center;
+        transition: background-color 0.3s ease;
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.06); /* Subtle depth */
     }
 
     .dot {
-        width: 30px;
-        height: 30px;
-        background-color: #000000;
+        width: 18px;
+        height: 18px;
+        background-color: var(--pin-dot);
         border-radius: 50%;
+        animation: popIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
+    @@keyframes popIn {
+        from { transform: scale(0); }
+        to { transform: scale(1); }
+    }
+
+    /* GHOST INPUT */
     .ghost-input {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        opacity: 0; cursor: default;
-        /* Ensure it covers everything but doesn't block layout */
-        z-index: 10;
-        caret-color: transparent; /* Hide text cursor on modern browsers */
+        opacity: 0; 
+        cursor: pointer;
+        background: transparent; 
+        border: none;
+        outline: none;
+        color: transparent;
+        text-shadow: 0 0 0 transparent;
     }
+
+    /* ERROR STYLES */
+    .error-container {
+        height: 30px; /* Fixed height to prevent jumping */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .error-text {
+        color: #dc3545;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: opacity 0.3s ease;
+        margin: 0;
+    }
+    
+    .error-text.hidden { opacity: 0; }
+    .error-text.visible { opacity: 1; }
 
     .shake-animation {
         animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
