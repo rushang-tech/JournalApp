@@ -66,25 +66,29 @@
             </div>
 
             <div class="editor-actions">
-
-                <!-- Mood Selection -->
+                
+                <!-- PRIMARY Mood Selection -->
                 <div class="mood-container">
                     <div class="mood-selector @(triggerShake ? "shake-animation" : "")">
                         @foreach(var mood in moods)
                         {
-                        bool isSelected = currentEntry.PrimaryMood == mood;
-                        <!-- ASYNC TOGGLE to save text state -->
-                        <button class="mood-btn @(isSelected ? "selected" : "")"
-                                @onclick="() => ToggleMood(mood)">
-                            @GetMoodEmoji(mood)
-                        </button>
+                            bool isSelected = currentEntry.PrimaryMood == mood;
+                            <button class="mood-btn @(isSelected ? "selected" : "")"
+                                    @onclick="() => ToggleMood(mood)">
+                                @GetMoodEmoji(mood)
+                            </button>
                         }
                     </div>
                     @if (showMoodError)
                     {
-                    <div class="mood-error-popup">Select a mood!</div>
+                        <div class="mood-error-popup">Select a mood!</div>
                     }
                 </div>
+                
+                <!-- NEW: Toggle Secondary Moods Panel -->
+                <button class="icon-btn" @onclick="() => showSecondaryMoods = !showSecondaryMoods" title="Add More Feelings" style="border:none;">
+                    <i class="bi bi-three-dots"></i>
+                </button>
 
                 <!-- Delete Button -->
                 @if(currentEntry.Id != 0)
@@ -101,8 +105,25 @@
             </div>
         </div>
 
+        <!-- NEW: SECONDARY MOODS PANEL (Hidden by default) -->
+        @if (showSecondaryMoods)
+        {
+            <div class="secondary-moods-panel fade-in-down">
+                <span class="panel-label">Additional Feelings (Optional)</span>
+                <div class="secondary-chips">
+                    @foreach (var mood in secondaryMoodOptions)
+                    {
+                        bool isSelected = (currentEntry.SecondaryMoods ?? "").Split(',').Contains(mood);
+                        <button class="chip-btn @(isSelected ? "active" : "")" 
+                                @onclick="() => ToggleSecondaryMood(mood)">
+                            @mood
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         <!-- Editor Canvas -->
-        <!-- Added 'expanded' class logic here based on sidebar state -->
         <div class="editor-canvas @(isSidebarOpen ? "" : "expanded")">
             <!-- Title Input -->
             <input type="text"
@@ -110,7 +131,7 @@
                    placeholder="Title your day..."
                    @bind="currentEntry.Title" />
 
-            <!-- Rich Text Editor: Fills remaining space -->
+            <!-- Rich Text Editor -->
             <div id="richEditor"
                  class="rich-text-editor"
                  contenteditable="true"
@@ -171,6 +192,11 @@
 private JournalEntry currentEntry = new JournalEntry { EntryDate = DateTime.Now };
 private List<JournalEntry> pastEntries = new();
 private string[] moods = { "Happy", "Neutral", "Sad" };
+
+// NEW: Secondary Moods List
+private string[] secondaryMoodOptions = { "Excited", "Relaxed", "Grateful", "Confident", "Calm", "Thoughtful", "Bored", "Angry", "Anxious", "Stressed", "Lonely" };
+private bool showSecondaryMoods = false;
+
 private bool isSidebarOpen = true;
 
 // Validation State
@@ -185,137 +211,137 @@ private ElementReference searchInput;
 
 protected override async Task OnInitializedAsync()
 {
-await LoadList();
+    await LoadList();
 
-if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out DateTime parsedDate))
-{
-await LoadEntryByDate(parsedDate);
-}
-else
-{
-await CreateNew();
-}
+    if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out DateTime parsedDate))
+    {
+        await LoadEntryByDate(parsedDate);
+    }
+    else
+    {
+        await CreateNew();
+    }
 }
 
 protected override async Task OnAfterRenderAsync(bool firstRender)
 {
-if (firstRender)
-{
-await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
-}
-if (showSearch) await searchInput.FocusAsync();
+    if (firstRender)
+    {
+        await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
+    }
+    if (showSearch) await searchInput.FocusAsync();
 }
 
 private async Task LoadList() => pastEntries = await DbService.GetAllEntriesAsync();
 
 private async Task LoadEntryByDate(DateTime date)
 {
-if(currentEntry.Id != 0) await SaveEntryWithoutValidation();
-
-var existing = await DbService.GetEntryByDateAsync(date);
-
-currentEntry = existing ?? new JournalEntry { EntryDate = date };
-
-await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
-ResetValidation();
+    if(currentEntry.Id != 0) await SaveEntryWithoutValidation();
+    var existing = await DbService.GetEntryByDateAsync(date);
+    currentEntry = existing ?? new JournalEntry { EntryDate = date };
+    await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
+    ResetValidation();
 }
 
 private async Task LoadEntry(JournalEntry entry)
 {
-if(currentEntry.Id != 0) await SaveEntryWithoutValidation();
-
-currentEntry = entry;
-await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
-ResetValidation();
+    if(currentEntry.Id != 0) await SaveEntryWithoutValidation();
+    currentEntry = entry;
+    await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content);
+    ResetValidation();
 }
 
-// --- ONE ENTRY PER DAY LOGIC ---
 private async Task CreateNew()
 {
-var today = DateTime.Today;
-var existingToday = await DbService.GetEntryByDateAsync(today);
-
-if (existingToday != null)
-{
-currentEntry = existingToday;
-}
-else
-{
-currentEntry = new JournalEntry { EntryDate = DateTime.Now };
-}
-
-await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content ?? "");
-ResetValidation();
+    var today = DateTime.Today;
+    var existingToday = await DbService.GetEntryByDateAsync(today);
+    currentEntry = existingToday ?? new JournalEntry { EntryDate = DateTime.Now };
+    await JS.InvokeVoidAsync("editorUtils.setHtml", "richEditor", currentEntry.Content ?? "");
+    ResetValidation();
 }
 
 private void ResetValidation()
 {
-triggerShake = false;
-showMoodError = false;
+    triggerShake = false;
+    showMoodError = false;
 }
 
 private void ToggleSidebar() => isSidebarOpen = !isSidebarOpen;
 
-// --- TEXT STATE PRESERVATION FIX ---
+// --- MOOD LOGIC ---
 private async Task ToggleMood(string mood)
 {
-string currentHtml = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
-currentEntry.Content = currentHtml;
+    // Save content before switching context
+    string currentHtml = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
+    currentEntry.Content = currentHtml;
 
-if (currentEntry.PrimaryMood == mood)
-{
-currentEntry.PrimaryMood = "";
-}
-else
-{
-currentEntry.PrimaryMood = mood;
-ResetValidation();
+    if (currentEntry.PrimaryMood == mood) currentEntry.PrimaryMood = "";
+    else 
+    {
+        currentEntry.PrimaryMood = mood;
+        ResetValidation();
+    }
+    StateHasChanged();
 }
 
-StateHasChanged();
+// NEW: Secondary Mood Toggle Logic
+private void ToggleSecondaryMood(string mood)
+{
+    var currentList = (currentEntry.SecondaryMoods ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+    
+    if (currentList.Contains(mood))
+    {
+        currentList.Remove(mood);
+    }
+    else
+    {
+        // Limit to 2 secondary moods as per requirements? Or allow multiple? 
+        // Requirement says "up to two", let's enforce it.
+        if (currentList.Count < 2) 
+        {
+            currentList.Add(mood);
+        }
+    }
+    
+    currentEntry.SecondaryMoods = string.Join(",", currentList);
 }
 
 private string GetMoodEmoji(string? mood) => mood switch { "Happy" => "😊", "Sad" => "😔", "Neutral" => "😐", _ => "" };
 
-private async Task SaveTextState()
-{
-currentEntry.Content = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
-}
-
 private async Task SaveEntry()
 {
-if (string.IsNullOrEmpty(currentEntry.PrimaryMood))
-{
-triggerShake = true;
-showMoodError = true;
-StateHasChanged();
-await Task.Delay(500);
-triggerShake = false;
-StateHasChanged();
-return;
-}
+    if (string.IsNullOrEmpty(currentEntry.PrimaryMood))
+    {
+        triggerShake = true;
+        showMoodError = true;
+        StateHasChanged();
+        await Task.Delay(500);
+        triggerShake = false;
+        StateHasChanged();
+        return;
+    }
 
-await SaveEntryWithoutValidation();
-await JS.InvokeVoidAsync("alert", "Saved successfully!");
+    await SaveEntryWithoutValidation();
+    await JS.InvokeVoidAsync("alert", "Saved successfully!");
 }
 
 private async Task SaveEntryWithoutValidation()
 {
-currentEntry.Content = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
-await DbService.SaveEntryAsync(currentEntry);
-await LoadList();
+    currentEntry.Content = await JS.InvokeAsync<string>("editorUtils.getHtml", "richEditor");
+    await DbService.SaveEntryAsync(currentEntry);
+    await LoadList();
 }
 
 private async Task DeleteCurrentEntry()
 {
-if (currentEntry.Id == 0) return;
-bool confirmed = await JS.InvokeAsync<bool>("confirm", "Delete this entry?");
-if (confirmed)
-{
-await DbService.DeleteEntryAsync(currentEntry);
-await LoadList();
-await CreateNew();
-}
+    if (currentEntry.Id == 0) return;
+    bool confirmed = await JS.InvokeAsync<bool>("confirm", "Delete this entry?");
+    if (confirmed)
+    {
+        await DbService.DeleteEntryAsync(currentEntry);
+        await LoadList();
+        await CreateNew();
+    }
 }
 
 // Search Logic
@@ -323,11 +349,11 @@ private void OpenSearch() { searchQuery = ""; searchResults.Clear(); showSearch 
 private void CloseSearch() => showSearch = false;
 private void HandleSearchInput(ChangeEventArgs e)
 {
-searchQuery = e.Value?.ToString() ?? "";
-if (!string.IsNullOrWhiteSpace(searchQuery))
-{
-searchResults = pastEntries.Where(x => (x.Title?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false) || (x.Content?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false)).Take(5).ToList();
-}
+    searchQuery = e.Value?.ToString() ?? "";
+    if (!string.IsNullOrWhiteSpace(searchQuery))
+    {
+        searchResults = pastEntries.Where(x => (x.Title?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false) || (x.Content?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false)).Take(5).ToList();
+    }
 }
 private async Task SelectSearchResult(JournalEntry entry) { await LoadEntry(entry); CloseSearch(); }
 }
@@ -335,156 +361,64 @@ private async Task SelectSearchResult(JournalEntry entry) { await LoadEntry(entr
 <style>
     /* --- FIXED LAYOUT STRUCTURE --- */
     .journal-screen-dock {
-        display: flex;
-        flex-direction: row;
-        height: 100vh;
-        width: 100%;
-        overflow: hidden;
-        background-color: var(--bg-primary);
-        position: relative;
+        display: flex; flex-direction: row; height: 100vh; width: 100%;
+        overflow: hidden; background-color: var(--bg-primary); position: relative;
     }
 
     /* --- SIDEBAR --- */
     .journal-middle-list {
-        width: 300px;
-        background-color: var(--bg-secondary);
-        border-right: 1px solid var(--border-color);
-        display: flex;
-        flex-direction: column;
-        padding: 25px;
+        width: 300px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color);
+        display: flex; flex-direction: column; padding: 25px;
         transition: width 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
-        flex-shrink: 0;
-        z-index: 5;
+        flex-shrink: 0; z-index: 5;
     }
+    .journal-middle-list.collapsed { width: 0; padding: 25px 0; opacity: 0; border: none; overflow: hidden; }
 
-    .journal-middle-list.collapsed {
-        width: 0; padding: 25px 0; opacity: 0; border: none; overflow: hidden;
-    }
-
-    .sidebar-header {
-        display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
-    }
-    .sidebar-title {
-        font-size: 1.5rem; font-weight: 800; margin: 0; color: var(--text-primary);
-    }
+    .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+    .sidebar-title { font-size: 1.5rem; font-weight: 800; margin: 0; color: var(--text-primary); }
     .sidebar-actions { display: flex; gap: 8px; }
 
     .icon-btn {
-        background: transparent; border: 1px solid var(--border-color);
-        color: var(--text-secondary); border-radius: 50%;
-        width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+        background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary);
+        border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
         cursor: pointer; transition: all 0.2s;
     }
     .icon-btn:hover { background-color: var(--hover-bg); color: var(--text-primary); }
     .icon-btn.danger:hover { background-color: #fee2e2; color: #dc2626; border-color: #fee2e2; }
 
-    .entry-list-container {
-        flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
-    }
+    .entry-list-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 
     .sidebar-entry-item {
-        padding: 16px; border-radius: 16px; cursor: pointer;
-        background-color: transparent; border: 1px solid transparent;
-        transition: all 0.2s;
+        padding: 16px; border-radius: 16px; cursor: pointer; background-color: transparent;
+        border: 1px solid transparent; transition: all 0.2s;
     }
     .sidebar-entry-item:hover { background-color: var(--hover-bg); }
-    .sidebar-entry-item.active {
-        background-color: var(--bg-tertiary);
-        border-color: var(--border-color);
-    }
+    .sidebar-entry-item.active { background-color: var(--bg-tertiary); border-color: var(--border-color); }
 
     .entry-item-title { font-weight: 700; color: var(--text-primary); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .entry-item-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); }
 
-    /* --- EDITOR AREA (Fixed Height Logic) --- */
+    /* --- EDITOR AREA --- */
     .journal-main-editor {
-        flex: 1;
-        background-color: var(--bg-primary);
-        display: flex; flex-direction: column;
-        position: relative;
-        height: 100vh; /* Force full height */
-        overflow: hidden;
+        flex: 1; background-color: var(--bg-primary); display: flex; flex-direction: column;
+        position: relative; height: 100vh; overflow: hidden;
     }
 
     .editor-header {
-        padding: 25px 40px;
-        display: flex; justify-content: space-between; align-items: center;
-        border-bottom: 1px solid transparent;
-        flex-shrink: 0;
+        padding: 25px 40px; display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid transparent; flex-shrink: 0;
     }
-
-    .date-display {
-        font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); letter-spacing: 1px;
-    }
-
+    .date-display { font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); letter-spacing: 1px; }
     .editor-actions { display: flex; align-items: center; gap: 15px; }
 
-    /* --- CANVAS & INPUTS (Dynamic Expansion) --- */
-    .editor-canvas {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-        padding: 20px 80px 80px 80px;
-        overflow-y: auto;
-
-        /* STANDARD WIDTH */
-        max-width: 900px;
-        width: 100%;
-        margin: 0 auto;
-
-        transition: max-width 0.4s ease, padding 0.4s ease;
-    }
-
-    /* EXPANDED STATE (Triggered when sidebar collapsed) */
-    .editor-canvas.expanded {
-        max-width: 1600px; /* Expands to fill screen */
-    }
-
-    .title-input {
-        width: 100%; border: none; background: transparent;
-        font-size: 3rem; font-weight: 900; color: var(--text-primary);
-        margin-bottom: 30px; outline: none;
-        flex-shrink: 0;
-    }
-    .title-input::placeholder { color: var(--text-muted); opacity: 0.5; }
-
-    /* EDITOR SIZE */
-    .rich-text-editor {
-        width: 100%;
-        flex-grow: 1; /* Stretch to fill vertical void */
-        min-height: 500px;
-        outline: none;
-        font-size: 1.25rem; line-height: 1.8; color: var(--text-primary);
-        white-space: pre-wrap;
-    }
-
-    .rich-text-editor:empty:before {
-        content: attr(placeholder); color: var(--text-muted); display: block;
-    }
-
-    .rich-text-editor ul { padding-left: 20px; margin-bottom: 10px; }
-    .rich-text-editor li { margin-bottom: 5px; }
-
-    .tags-input {
-        width: 100%; border: none; background: transparent;
-        margin-top: 40px; color: var(--text-secondary); font-size: 1rem;
-        flex-shrink: 0;
-        padding-bottom: 40px;
-    }
-
-    /* --- MOOD & TOOLBAR STYLES --- */
+    /* --- MOOD & SECONDARY MOODS --- */
     .mood-container { position: relative; }
-
     .mood-selector {
         display: flex; gap: 5px; background: var(--bg-secondary);
         padding: 4px; border-radius: 50px; border: 1px solid var(--border-color);
     }
-
-    .shake-animation {
-        animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-        border-color: #dc3545 !important;
-    }
-
+    .shake-animation { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; border-color: #dc3545 !important; }
+    
     @@keyframes shake {
         10%, 90% { transform: translate3d(-1px, 0, 0); }
         20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -493,17 +427,13 @@ private async Task SelectSearchResult(JournalEntry entry) { await LoadEntry(entr
     }
 
     .mood-error-popup {
-        position: absolute; top: 45px; right: 0;
-        background-color: #dc3545; color: white;
-        font-size: 0.75rem; font-weight: 700;
-        padding: 4px 10px; border-radius: 6px;
-        white-space: nowrap; animation: fadeIn 0.2s;
-        z-index: 10;
+        position: absolute; top: 45px; right: 0; background-color: #dc3545; color: white;
+        font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px;
+        white-space: nowrap; animation: fadeIn 0.2s; z-index: 10;
     }
     .mood-error-popup::before {
-        content: ""; position: absolute; top: -4px; right: 20px;
-        width: 8px; height: 8px; background-color: #dc3545;
-        transform: rotate(45deg);
+        content: ""; position: absolute; top: -4px; right: 20px; width: 8px; height: 8px;
+        background-color: #dc3545; transform: rotate(45deg);
     }
 
     .mood-btn {
@@ -514,6 +444,23 @@ private async Task SelectSearchResult(JournalEntry entry) { await LoadEntry(entr
     .mood-btn:hover { background-color: var(--hover-bg); transform: scale(1.1); }
     .mood-btn.selected { background-color: var(--accent-color); color: var(--accent-text); transform: scale(1.1); }
 
+    /* Secondary Moods Panel */
+    .secondary-moods-panel {
+        background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color);
+        padding: 15px 40px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .panel-label { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; }
+    .secondary-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip-btn {
+        background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-secondary);
+        padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; cursor: pointer;
+        transition: all 0.2s;
+    }
+    .chip-btn:hover { background-color: var(--hover-bg); color: var(--text-primary); }
+    .chip-btn.active { background-color: var(--accent-color); color: var(--accent-text); border-color: var(--accent-color); }
+    .fade-in-down { animation: fadeInDown 0.3s ease-out; }
+    @@keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
     .save-btn {
         background-color: var(--text-primary); color: var(--bg-primary);
         border: none; padding: 8px 24px; border-radius: 50px;
@@ -521,50 +468,53 @@ private async Task SelectSearchResult(JournalEntry entry) { await LoadEntry(entr
     }
     .save-btn:hover { opacity: 0.9; }
 
-    /* --- FLOATING TOOLBAR --- */
+    /* --- CANVAS & INPUTS --- */
+    .editor-canvas {
+        flex-grow: 1; display: flex; flex-direction: column; padding: 20px 80px 80px 80px;
+        overflow-y: auto; max-width: 900px; width: 100%; margin: 0 auto;
+        transition: max-width 0.4s ease, padding 0.4s ease;
+    }
+    .editor-canvas.expanded { max-width: 1600px; }
+
+    .title-input {
+        width: 100%; border: none; background: transparent;
+        font-size: 3rem; font-weight: 900; color: var(--text-primary); margin-bottom: 30px; outline: none; flex-shrink: 0;
+    }
+    .title-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+    .rich-text-editor {
+        width: 100%; flex-grow: 1; min-height: 500px; outline: none;
+        font-size: 1.25rem; line-height: 1.8; color: var(--text-primary); white-space: pre-wrap;
+    }
+    .rich-text-editor:empty:before { content: attr(placeholder); color: var(--text-muted); display: block; }
+    .rich-text-editor ul { padding-left: 20px; margin-bottom: 10px; }
+    .rich-text-editor li { margin-bottom: 5px; }
+
+    .tags-input {
+        width: 100%; border: none; background: transparent;
+        margin-top: 40px; color: var(--text-secondary); font-size: 1rem; flex-shrink: 0; padding-bottom: 40px;
+    }
+
+    /* --- TOOLBAR --- */
     .formatting-toolbar {
         position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
         background-color: var(--bg-secondary); border: 1px solid var(--border-color);
         padding: 10px 20px; border-radius: 50px; display: flex; gap: 20px;
-        box-shadow: 0 5px 20px var(--shadow-color);
-        z-index: 10;
+        box-shadow: 0 5px 20px var(--shadow-color); z-index: 10;
     }
-    .format-btn {
-        background: none; border: none; color: var(--text-primary);
-        font-size: 1.2rem; cursor: pointer; transition: color 0.2s;
-    }
+    .format-btn { background: none; border: none; color: var(--text-primary); font-size: 1.2rem; cursor: pointer; transition: color 0.2s; }
     .format-btn:hover { color: #512BD4; }
 
-    /* --- SEARCH OVERLAY --- */
-    .spotlight-overlay {
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
-        z-index: 100; display: flex; justify-content: center; padding-top: 15vh;
-        opacity: 0; pointer-events: none; transition: opacity 0.2s;
-    }
+    /* --- SEARCH --- */
+    .spotlight-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 100; display: flex; justify-content: center; padding-top: 15vh; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
     .spotlight-overlay.visible { opacity: 1; pointer-events: auto; }
-
-    .spotlight-container {
-        width: 600px; background: var(--bg-secondary);
-        border-radius: 16px; overflow: hidden;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid var(--border-color);
-        display: flex; flex-direction: column; max-height: 400px;
-    }
-    .spotlight-bar {
-        display: flex; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color);
-    }
+    .spotlight-container { width: 600px; background: var(--bg-secondary); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid var(--border-color); display: flex; flex-direction: column; max-height: 400px; }
+    .spotlight-bar { display: flex; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color); }
     .spotlight-bar i { font-size: 1.5rem; color: var(--text-muted); margin-right: 15px; }
-    .spotlight-input {
-        flex: 1; background: transparent; border: none; font-size: 1.5rem; color: var(--text-primary);
-    }
+    .spotlight-input { flex: 1; background: transparent; border: none; font-size: 1.5rem; color: var(--text-primary); }
     .spotlight-results { overflow-y: auto; padding: 10px; }
-    .spotlight-item {
-        padding: 15px; display: flex; justify-content: space-between; align-items: center;
-        border-radius: 10px; cursor: pointer; color: var(--text-primary);
-    }
+    .spotlight-item { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; cursor: pointer; color: var(--text-primary); }
     .spotlight-item:hover { background-color: var(--hover-bg); }
-
-    /* Scrollbars */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
 </style>

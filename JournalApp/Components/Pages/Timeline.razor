@@ -4,116 +4,132 @@
 @inject JournalService DbService
 @inject NavigationManager Nav
 
-<div class="timeline-container">
-    
-    <!-- 1. HEADER SECTION -->
-    <div class="timeline-header fade-in-up">
-        <h2 class="page-title">Timeline</h2>
-        <p class="page-subtitle">Your story, captured one day at a time.</p>
-    </div>
-
-    <!-- 2. FLOATING TOOLBAR (Centered & Polished) -->
-    <div class="toolbar-wrapper fade-in-up" style="animation-delay: 0.1s;">
-        <div class="glass-toolbar">
-            
-            <!-- Search -->
-            <div class="search-box">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" 
-                       class="search-input" 
-                       placeholder="Search memories..." 
-                       value="@searchText"
-                       @oninput="HandleSearchInput" />
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Mood Filter -->
-            <div class="mood-group">
-                <button class="mood-chip @(selectedMood == null ? "active" : "")" @onclick="() => SetMood(null)">All</button>
-                <button class="mood-chip icon-only @(selectedMood == "Happy" ? "active" : "")" @onclick='() => SetMood("Happy")' title="Happy">😊</button>
-                <button class="mood-chip icon-only @(selectedMood == "Neutral" ? "active" : "")" @onclick='() => SetMood("Neutral")' title="Neutral">😐</button>
-                <button class="mood-chip icon-only @(selectedMood == "Sad" ? "active" : "")" @onclick='() => SetMood("Sad")' title="Sad">😔</button>
-            </div>
-
-            <div class="divider d-none d-md-block"></div>
-
-            <!-- Date Filter -->
-            <div class="date-group d-none d-md-flex">
-                <input type="date" class="date-picker" value="@(startDate?.ToString("yyyy-MM-dd"))" @onchange="HandleStartDateChange" />
-                <span class="arrow">→</span>
-                <input type="date" class="date-picker" value="@(endDate?.ToString("yyyy-MM-dd"))" @onchange="HandleEndDateChange" />
-            </div>
-
-            <!-- Reset Button -->
-            @if (!string.IsNullOrEmpty(searchText) || !string.IsNullOrEmpty(selectedMood) || startDate.HasValue || endDate.HasValue)
-            {
-                <button class="reset-btn" @onclick="ResetFilters">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            }
+<div class="page-standard-wrapper"> <!-- Using standard wrapper to respect layout -->
+    <div class="timeline-container">
+        
+        <!-- 1. HEADER SECTION -->
+        <div class="timeline-header fade-in-up">
+            <h2 class="page-title">Timeline</h2>
+            <p class="page-subtitle">Your story, captured one day at a time.</p>
         </div>
-    </div>
 
-    <!-- 3. TIMELINE FEED -->
-    <div class="feed-list mt-5">
-        @if (isLoading)
-        {
-            <div class="state-message">
-                <div class="spinner-border text-secondary mb-2" role="status"></div>
-                <p>Loading entries...</p>
-            </div>
-        }
-        else if (filteredEntries.Count == 0)
-        {
-             <div class="state-message">
-                 <i class="bi bi-journal-x fs-1 mb-3 opacity-50"></i>
-                 <p>No entries found matching filters.</p>
-                 <button class="text-btn" @onclick="ResetFilters">Clear filters</button>
-             </div>
-        }
-        else
-        {
-            @foreach (var entry in filteredEntries)
-            {
-                <div class="memory-card fade-in-up" @onclick='() => Nav.NavigateTo($"journal?date={entry.EntryDate:yyyy-MM-dd}")'>
-                    
-                    <!-- Left: Date -->
-                    <div class="date-col">
-                        <span class="day">@entry.EntryDate.Day</span>
-                        <span class="month">@entry.EntryDate.ToString("MMM")</span>
-                        <span class="year">@entry.EntryDate.Year</span>
-                    </div>
+        <!-- 2. FLOATING TOOLBAR (Centered & Polished) -->
+        <div class="toolbar-wrapper fade-in-up" style="animation-delay: 0.1s;">
+            <div class="glass-toolbar">
+                
+                <!-- Search -->
+                <div class="search-box">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" 
+                           class="search-input" 
+                           placeholder="Search memories..." 
+                           value="@searchText"
+                           @oninput="HandleSearchInput" />
+                </div>
 
-                    <!-- Middle: Content -->
-                    <div class="content-col">
-                        <div class="top-row">
-                            <h4 class="title">@(string.IsNullOrEmpty(entry.Title) ? "Untitled Entry" : entry.Title)</h4>
-                            <div class="mood-display" title="@entry.PrimaryMood">
-                                @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐")
-                            </div>
-                        </div>
-                        
-                        <p class="preview-text">@(StripHtml(entry.Content ?? ""))</p>
-                        
-                        @if (!string.IsNullOrEmpty(entry.Tags))
-                        {
-                            <div class="tags-list">
-                                @foreach(var tag in entry.Tags.Split(','))
-                                {
-                                    <span class="tag">#@tag.Trim()</span>
-                                }
-                            </div>
-                        }
-                    </div>
+                <div class="divider"></div>
 
-                    <!-- Right: Actions (Delete) -->
-                    <button class="delete-action" @onclick:stopPropagation="true" @onclick="() => DeleteEntry(entry)">
-                        <i class="bi bi-trash3"></i>
+                <!-- Mood Filter -->
+                <div class="mood-group">
+                    <button class="mood-chip @(selectedMood == null ? "active" : "")" @onclick="() => SetMood(null)">All</button>
+                    <button class="mood-chip icon-only @(selectedMood == "Happy" ? "active" : "")" @onclick='() => SetMood("Happy")' title="Happy">😊</button>
+                    <button class="mood-chip icon-only @(selectedMood == "Neutral" ? "active" : "")" @onclick='() => SetMood("Neutral")' title="Neutral">😐</button>
+                    <button class="mood-chip icon-only @(selectedMood == "Sad" ? "active" : "")" @onclick='() => SetMood("Sad")' title="Sad">😔</button>
+                </div>
+
+                <div class="divider d-none d-md-block"></div>
+
+                <!-- Date Filter -->
+                <div class="date-group d-none d-md-flex">
+                    <input type="date" class="date-picker" value="@(startDate?.ToString("yyyy-MM-dd"))" @onchange="HandleStartDateChange" />
+                    <span class="arrow">→</span>
+                    <input type="date" class="date-picker" value="@(endDate?.ToString("yyyy-MM-dd"))" @onchange="HandleEndDateChange" />
+                </div>
+
+                <!-- Reset Button -->
+                @if (!string.IsNullOrEmpty(searchText) || !string.IsNullOrEmpty(selectedMood) || startDate.HasValue || endDate.HasValue)
+                {
+                    <button class="reset-btn" @onclick="ResetFilters">
+                        <i class="bi bi-x-lg"></i>
                     </button>
+                }
+            </div>
+        </div>
+
+        <!-- 3. TIMELINE FEED (PAGINATED) -->
+        <div class="feed-list mt-5">
+            @if (isLoading)
+            {
+                <div class="state-message">
+                    <div class="spinner-border text-secondary mb-2" role="status"></div>
+                    <p>Loading entries...</p>
                 </div>
             }
-        }
+            else if (filteredEntries.Count == 0)
+            {
+                 <div class="state-message">
+                     <i class="bi bi-journal-x fs-1 mb-3 opacity-50"></i>
+                     <p>No entries found matching filters.</p>
+                     <button class="text-btn" @onclick="ResetFilters">Clear filters</button>
+                 </div>
+            }
+            else
+            {
+                <!-- PAGINATION LOGIC: Take only the calculated number of items -->
+                @foreach (var entry in filteredEntries.Take(CurrentPage * PageSize))
+                {
+                    <div class="memory-card fade-in-up" @onclick='() => Nav.NavigateTo($"journal?date={entry.EntryDate:yyyy-MM-dd}")'>
+                        
+                        <!-- Left: Date -->
+                        <div class="date-col">
+                            <span class="day">@entry.EntryDate.Day</span>
+                            <span class="month">@entry.EntryDate.ToString("MMM")</span>
+                            <span class="year">@entry.EntryDate.Year</span>
+                        </div>
+
+                        <!-- Middle: Content -->
+                        <div class="content-col">
+                            <div class="top-row">
+                                <h4 class="title">@(string.IsNullOrEmpty(entry.Title) ? "Untitled Entry" : entry.Title)</h4>
+                                <div class="mood-display" title="@entry.PrimaryMood">
+                                    @(entry.PrimaryMood == "Happy" ? "😊" : entry.PrimaryMood == "Sad" ? "😔" : "😐")
+                                </div>
+                            </div>
+                            
+                            <p class="preview-text">@(StripHtml(entry.Content ?? ""))</p>
+                            
+                            @if (!string.IsNullOrEmpty(entry.Tags))
+                            {
+                                <div class="tags-list">
+                                    @foreach(var tag in entry.Tags.Split(','))
+                                    {
+                                        <span class="tag">#@tag.Trim()</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Right: Actions (Delete) -->
+                        <button class="delete-action" @onclick:stopPropagation="true" @onclick="() => DeleteEntry(entry)">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                }
+
+                <!-- LOAD MORE BUTTON (Only if there are more items to show) -->
+                @if (filteredEntries.Count > CurrentPage * PageSize)
+                {
+                    <div class="load-more-container fade-in-up">
+                        <button class="load-more-btn" @onclick="LoadMore">
+                            Load More
+                        </button>
+                        <p class="small text-muted mt-2">
+                            Showing @(Math.Min(filteredEntries.Count, CurrentPage * PageSize)) of @filteredEntries.Count entries
+                        </p>
+                    </div>
+                }
+            }
+        </div>
     </div>
 </div>
 
@@ -122,7 +138,8 @@
     .timeline-container {
         max-width: 900px;
         margin: 0 auto;
-        padding: 60px 20px;
+        /* Padding is handled by wrapper, just adding internal spacing */
+        padding-top: 20px;
     }
 
     .timeline-header { text-align: center; margin-bottom: 40px; }
@@ -144,7 +161,7 @@
         border-radius: 100px;
         padding: 8px 10px;
         display: flex; align-items: center;
-        box-shadow: var(--shadow-md);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* Replaced variable for stability */
         width: 100%; max-width: 850px;
         transition: transform 0.2s;
     }
@@ -169,8 +186,8 @@
         cursor: pointer; transition: all 0.2s;
     }
     .mood-chip.icon-only { padding: 6px 10px; font-size: 1.1rem; }
-    .mood-chip:hover { background-color: var(--hover-bg); color: var(--text-main); }
-    .mood-chip.active { background-color: var(--accent-color); color: var(--accent-text); box-shadow: var(--shadow-sm); }
+    .mood-chip:hover { background-color: rgba(0,0,0,0.05); color: var(--text-main); }
+    .mood-chip.active { background-color: #1A1A1A; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
     /* Date Picker */
     .date-group { display: flex; align-items: center; gap: 8px; }
@@ -178,7 +195,7 @@
         background-color: var(--input-bg); border: none; color: var(--text-main);
         padding: 6px 10px; border-radius: 8px; font-size: 0.8rem;
         font-family: inherit; cursor: pointer;
-        color-scheme: light dark; /* Dark mode calendar fix */
+        color-scheme: light dark; 
     }
     .arrow { color: var(--text-muted); font-size: 0.8rem; }
 
@@ -193,7 +210,7 @@
     .dark-theme .reset-btn { background-color: #3A1E1E; }
 
     /* --- CARD STYLING --- */
-    .feed-list { display: flex; flex-direction: column; gap: 20px; }
+    .feed-list { display: flex; flex-direction: column; gap: 20px; padding-bottom: 60px; }
 
     .memory-card {
         background-color: var(--card-bg);
@@ -204,8 +221,8 @@
     }
     .memory-card:hover {
         transform: translateY(-4px);
-        box-shadow: var(--shadow-md);
-        border-color: var(--text-muted);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+        border-color: #BBB;
     }
 
     /* Date Column */
@@ -235,7 +252,7 @@
     .tags-list { display: flex; flex-wrap: wrap; gap: 8px; }
     .tag {
         font-size: 0.75rem; font-weight: 600;
-        background-color: var(--input-bg); color: var(--text-muted);
+        background-color: rgba(0,0,0,0.05); color: var(--text-muted);
         padding: 4px 10px; border-radius: 6px;
     }
 
@@ -249,7 +266,19 @@
 
     /* Empty State */
     .state-message { text-align: center; color: var(--text-muted); padding: 40px; }
-    .text-btn { background: none; border: none; color: var(--accent-color); font-weight: 700; text-decoration: underline; cursor: pointer; }
+    .text-btn { background: none; border: none; color: #1A1A1A; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+    /* --- PAGINATION BUTTON --- */
+    .load-more-container { text-align: center; margin-top: 20px; }
+    .load-more-btn {
+        background-color: #1A1A1A; color: white;
+        border: none; padding: 12px 35px; border-radius: 50px;
+        font-weight: 700; font-size: 0.95rem;
+        cursor: pointer; transition: opacity 0.2s, transform 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .load-more-btn:hover { opacity: 0.85; transform: scale(1.02); }
+    .dark-theme .load-more-btn { background-color: #FFF; color: #000; }
 
     /* Responsive */
     @@media (max-width: 768px) {
@@ -275,6 +304,10 @@
     private DateTime? startDate = null;
     private DateTime? endDate = null;
 
+    // Pagination Variables (Requirement 2.2.6)
+    private int PageSize = 5; // How many entries to show initially
+    private int CurrentPage = 1;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
@@ -286,6 +319,12 @@
         allEntries = await DbService.GetAllEntriesAsync();
         ApplyFilters();
         isLoading = false;
+    }
+
+    private void LoadMore()
+    {
+        CurrentPage++;
+        // No need to reload data, just the UI loop will grab more items from filteredEntries
     }
 
     private void HandleSearchInput(ChangeEventArgs e)
@@ -323,6 +362,9 @@
 
     private void ApplyFilters()
     {
+        // Reset pagination when filters change
+        CurrentPage = 1;
+
         IEnumerable<JournalEntry> query = allEntries;
 
         if (!string.IsNullOrWhiteSpace(searchText)) 

@@ -59,6 +59,7 @@ namespace JournalApp.Services
         }
 
         // --- NEW: Pagination for Requirement #6 ---
+        // This method fetches data in chunks from the database
         public async Task<List<JournalEntry>> GetEntriesPagedAsync(int skip, int take)
         {
             await Init();

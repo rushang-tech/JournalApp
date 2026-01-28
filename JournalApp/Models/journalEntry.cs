@@ -14,12 +14,13 @@ namespace JournalApp.Models
         public string? Title { get; set; }
         public string? Content { get; set; }
 
-        // MARKING SCHEME ITEM 3: Primary + Secondary Moods
         public string? PrimaryMood { get; set; } 
-        public string? SecondaryMoods { get; set; } // Store as comma-separated string: "Happy,Relaxed"
+        public string? SecondaryMoods { get; set; } 
 
-        // MARKING SCHEME ITEM 4: Tags
-        public string? Tags { get; set; } // Store as "Work,Health"
+        // ADDED: Requirement for "Organize entries under categories"
+        public string? Category { get; set; } = "Personal"; 
+
+        public string? Tags { get; set; } 
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now; 
